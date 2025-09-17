@@ -2,19 +2,54 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>linkfast-services</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
-
-    <meta property="og:title" content="linkfast-services" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta name="theme-color" content="#8B0000" />
+    <meta name="description" content="QUICKLINK SERVICES - Everything You Need, One App. Marketplace, Fast Food, Taxi & Errands, Properties" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Apple PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="QUICKLINK" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="marketplace, food delivery, taxi, errands, properties, quicklink services, kenya" />
+    <meta name="author" content="QUICKLINK SERVICES" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="QUICKLINK SERVICES - Everything You Need, One App" />
+    <meta property="og:description" content="Shop from local stores, order food, book rides, find properties - all in one secure platform" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
+    <meta property="og:url" content="https://quicklink.services" />
+    <meta property="og:image" content="/og-image.png" />
+    
+    <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:title" content="QUICKLINK SERVICES" />
+    <meta name="twitter:description" content="Everything You Need, One App" />
+    <meta name="twitter:image" content="/og-image.png" />
+    
+    <title>QUICKLINK SERVICES - Everything You Need, One App</title>
+    
+    <script>
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </head>
 
   <body>
