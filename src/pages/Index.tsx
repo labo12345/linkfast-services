@@ -59,10 +59,10 @@ const Index = () => {
   ];
 
   const stats = [
-    { icon: Users, label: 'Active Users', value: '50K+' },
-    { icon: Shield, label: 'Secure Transactions', value: '99.9%' },
-    { icon: Zap, label: 'Avg Delivery Time', value: '25min' },
-    { icon: MapPin, label: 'Service Areas', value: '20+' },
+    { icon: ShoppingBag, label: "Active Merchants", value: "2K+" },
+    { icon: Users, label: "Happy Customers", value: "3K+" },
+    { icon: Car, label: "Drivers Online", value: "100+" },
+    { icon: Clock, label: "Support", value: "24/7" },
   ];
 
   const handleServiceClick = (href: string) => {

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, User, LogOut, ShoppingBag, Truck, Home, Building } from 'lucide-react';
+import { Menu, X, User, LogOut, ShoppingBag, Truck, Home, Building, Bell, ShoppingCart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +63,12 @@ export const Header = () => {
 
           {/* User Menu / Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
+            <Button variant="outline" size="sm" onClick={() => toast({ title: "Notifications", description: "No new notifications" })}>
+              <Bell className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => toast({ title: "Cart", description: "Your cart is empty" })}>
+              <ShoppingCart className="h-4 w-4" />
+            </Button>
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
