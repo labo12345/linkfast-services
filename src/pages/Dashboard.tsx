@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
@@ -22,6 +22,30 @@ import { useNavigate } from 'react-router-dom';
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect based on user role
+  useEffect(() => {
+    if (user) {
+      const userRole = user.user_metadata?.role || 'customer';
+      switch (userRole) {
+        case 'driver':
+          navigate('/driver-dashboard');
+          break;
+        case 'seller':
+          navigate('/seller-dashboard');
+          break;
+        case 'restaurant':
+          navigate('/restaurant-dashboard');
+          break;
+        case 'property_seller':
+          navigate('/property-dashboard');
+          break;
+        default:
+          // Customer dashboard stays here
+          break;
+      }
+    }
+  }, [user, navigate]);
 
   // Mock user data - in production this would come from Supabase
   const userStats = {

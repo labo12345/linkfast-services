@@ -13,6 +13,10 @@ import Properties from "./pages/Properties";
 import Taxi from "./pages/Taxi";
 import Errands from "./pages/Errands";
 import Admin from "./pages/Admin";
+import DriverDashboard from "./pages/DriverDashboard";
+import SellerDashboard from "./pages/SellerDashboard";
+import RestaurantDashboard from "./pages/RestaurantDashboard";
+import PropertySellerDashboard from "./pages/PropertySellerDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +38,10 @@ const App = () => (
             <Route path="/taxi" element={<Taxi />} />
             <Route path="/errands" element={<Errands />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/driver-dashboard" element={<DriverDashboard />} />
+            <Route path="/seller-dashboard" element={<SellerDashboard />} />
+            <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
+            <Route path="/property-dashboard" element={<PropertySellerDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

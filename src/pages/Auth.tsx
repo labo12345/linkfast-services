@@ -18,6 +18,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState('customer');
 
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export default function Auth() {
     setLoading(true);
     
     if (isSignUp) {
-      const { error } = await signUp(email, password, fullName);
+      const { error } = await signUp(email, password, fullName, userRole);
       if (!error) {
         // Success handled in useAuth with toast
       }
@@ -131,17 +132,34 @@ export default function Auth() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {isSignUp && (
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        type="text"
-                        placeholder="Enter your full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        required
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input
+                          id="fullName"
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">I want to</Label>
+                        <select
+                          id="role"
+                          value={userRole}
+                          onChange={(e) => setUserRole(e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="customer">Shop & Order (Customer)</option>
+                          <option value="driver">Drive & Earn (Driver)</option>
+                          <option value="seller">Sell Products (Merchant)</option>
+                          <option value="restaurant">Run Restaurant</option>
+                          <option value="property_seller">Sell Properties</option>
+                        </select>
+                      </div>
+                    </>
                   )}
 
                   <div className="space-y-2">
