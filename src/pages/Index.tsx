@@ -286,6 +286,67 @@ const Index = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-black text-white py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">Q</span>
+                </div>
+                <span className="font-bold text-xl text-gold">QUICKLINK</span>
+              </div>
+              <p className="text-gray-400">
+                Everything You Need, One App. Built for convenience, security and speed.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-lg mb-4 text-gold">Services</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="/marketplace" className="hover:text-gold transition-colors">Marketplace</a></li>
+                <li><a href="/food" className="hover:text-gold transition-colors">Fast Food</a></li>
+                <li><a href="/taxi" className="hover:text-gold transition-colors">Taxi & Errands</a></li>
+                <li><a href="/properties" className="hover:text-gold transition-colors">Properties</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-lg mb-4 text-gold">Contact</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li className="flex items-center space-x-2">
+                  <span>📞</span>
+                  <span>0111679286</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span>📞</span>
+                  <span>0717562660</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4 text-gold" />
+                  <span>Everywhere - Currently Kerugoya</span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-lg mb-4 text-gold">Support</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-gold transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-gold transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-gold transition-colors">Privacy Policy</a></li>
+                <li><span className="text-gold">24/7 Available</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 QUICKLINK SERVICES. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PWAInstallButton } from '@/components/PWAInstallButton';
 
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -201,6 +202,7 @@ export const Header = () => {
           )}
         </AnimatePresence>
       </div>
+      <PWAInstallButton />
     </header>
   );
 };
