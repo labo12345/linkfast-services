@@ -21,6 +21,10 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+// Import property images
+import houseImg from '@/assets/property-house.webp';
+import apartmentImg from '@/assets/property-apartment.webp';
+
 interface Property {
   id: string;
   title: string;
@@ -167,7 +171,9 @@ export default function Properties() {
                 <Card className="hover:shadow-elegant transition-all">
                   <div className="relative">
                     <img
-                      src={property.images?.[0] || '/placeholder.svg'}
+                      src={property.images?.[0]?.includes('house') ? houseImg : 
+                           property.images?.[0]?.includes('apartment') ? apartmentImg :
+                           property.images?.[0] || '/placeholder.svg'}
                       alt={property.title}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />

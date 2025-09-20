@@ -18,6 +18,10 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+// Import food images
+import burgerImg from '@/assets/food-burger.webp';
+import pizzaImg from '@/assets/food-pizza.webp';
+
 interface MenuItem {
   id: string;
   name: string;
@@ -183,7 +187,9 @@ export default function Food() {
                 <Card className="hover:shadow-elegant transition-all">
                   <div className="relative">
                     <img
-                      src={item.image_url || '/placeholder.svg'}
+                      src={item.image_url?.includes('burger') ? burgerImg : 
+                           item.image_url?.includes('pizza') ? pizzaImg :
+                           item.image_url || '/placeholder.svg'}
                       alt={item.name}
                       className="w-full h-48 object-cover rounded-t-lg"
                     />
