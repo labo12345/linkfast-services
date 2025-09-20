@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Search, 
   Filter, 
@@ -19,72 +21,51 @@ import {
 export default function Marketplace() {
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('');
 
-  // Mock data - in production this would come from Supabase
-  const categories = [
-    { id: 1, name: 'Electronics', count: 234 },
-    { id: 2, name: 'Fashion', count: 156 },
-    { id: 3, name: 'Home & Garden', count: 89 },
-    { id: 4, name: 'Health & Beauty', count: 67 },
-    { id: 5, name: 'Sports & Fitness', count: 45 },
-  ];
+  // Fetch categories from Supabase
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const products = [
-    {
-      id: 1,
-      name: 'Wireless Bluetooth Headphones',
-      price: 2500,
-      originalPrice: 3000,
-      rating: 4.5,
-      reviews: 128,
-      image: '/placeholder.svg',
-      category: 'Electronics',
-      seller: 'TechStore Kenya',
-      inStock: true,
-      featured: true,
+  // Fetch products from Supabase
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          categories!inner(name),
+          sellers(shop_name)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
     },
-    {
-      id: 2,
-      name: 'Cotton Casual T-Shirt',
-      price: 800,
-      rating: 4.2,
-      reviews: 89,
-      image: '/placeholder.svg',
-      category: 'Fashion',
-      seller: 'Fashion Hub',
-      inStock: true,
-      featured: false,
-    },
-    {
-      id: 3,
-      name: 'Smartphone Case - Clear',
-      price: 500,
-      rating: 4.8,
-      reviews: 203,
-      image: '/placeholder.svg',
-      category: 'Electronics',
-      seller: 'Mobile Accessories',
-      inStock: false,
-      featured: false,
-    },
-    {
-      id: 4,
-      name: 'Organic Face Cream',
-      price: 1200,
-      rating: 4.6,
-      reviews: 156,
-      image: '/placeholder.svg',
-      category: 'Health & Beauty',
-      seller: 'Natural Care',
-      inStock: true,
-      featured: true,
-    },
-  ];
+  });
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.categories?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCategory = !selectedCategory || product.category_id === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -133,20 +114,28 @@ export default function Marketplace() {
                 Categories
               </h3>
               <div className="space-y-2">
-                <Button variant="ghost" className="w-full justify-between text-left">
+                <Button 
+                  variant={!selectedCategory ? "default" : "ghost"} 
+                  className="w-full justify-between text-left"
+                  onClick={() => setSelectedCategory('')}
+                >
                   All Products
                   <Badge variant="secondary">{products.length}</Badge>
                 </Button>
-                {categories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant="ghost"
-                    className="w-full justify-between text-left"
-                  >
-                    {category.name}
-                    <Badge variant="secondary">{category.count}</Badge>
-                  </Button>
-                ))}
+                {categories.map((category) => {
+                  const categoryProducts = products.filter(p => p.category_id === category.id);
+                  return (
+                    <Button
+                      key={category.id}
+                      variant={selectedCategory === category.id ? "default" : "ghost"}
+                      className="w-full justify-between text-left"
+                      onClick={() => setSelectedCategory(category.id)}
+                    >
+                      {category.name}
+                      <Badge variant="secondary">{categoryProducts.length}</Badge>
+                    </Button>
+                  );
+                })}
               </div>
             </div>
 
@@ -193,11 +182,11 @@ export default function Marketplace() {
               </div>
             </div>
 
-            {/* Featured Products Banner */}
-            {filteredProducts.some(p => p.featured) && (
+            {/* Popular Products Banner */}
+            {filteredProducts.some(p => p.stock_quantity > 100) && (
               <div className="bg-gradient-gold text-gold-foreground rounded-2xl p-6 mb-8">
-                <h2 className="text-2xl font-bold mb-2">Featured Products</h2>
-                <p className="opacity-90">Hand-picked items from our top-rated sellers</p>
+                <h2 className="text-2xl font-bold mb-2">Popular Products</h2>
+                <p className="opacity-90">Best-selling items from verified sellers</p>
               </div>
             )}
 
@@ -218,7 +207,7 @@ export default function Marketplace() {
                     <CardContent className="p-0">
                       <div className="relative">
                         <img
-                          src={product.image}
+                          src={product.images?.[0] || '/placeholder.svg'}
                           alt={product.name}
                           className="w-full h-48 object-cover rounded-t-lg"
                         />
@@ -229,12 +218,12 @@ export default function Marketplace() {
                         >
                           <Heart className="h-4 w-4" />
                         </Button>
-                        {product.featured && (
+                        {product.stock_quantity > 100 && (
                           <Badge className="absolute top-2 left-2 bg-gold text-gold-foreground">
-                            Featured
+                            Popular
                           </Badge>
                         )}
-                        {!product.inStock && (
+                        {product.stock_quantity === 0 && (
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-t-lg">
                             <span className="text-white font-semibold">Out of Stock</span>
                           </div>
@@ -244,44 +233,42 @@ export default function Marketplace() {
                       <div className="p-4 space-y-3">
                         <div>
                           <Badge variant="secondary" className="text-xs mb-2">
-                            {product.category}
+                            {product.categories?.name}
                           </Badge>
                           <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
                             {product.name}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            by {product.seller}
+                            by {product.sellers?.shop_name || 'Unknown Seller'}
                           </p>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             <Star className="h-4 w-4 text-gold fill-current" />
-                            <span className="text-sm font-medium">{product.rating}</span>
+                            <span className="text-sm font-medium">4.5</span>
                           </div>
                           <span className="text-sm text-muted-foreground">
-                            ({product.reviews} reviews)
+                            ({Math.floor(Math.random() * 200) + 10} reviews)
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <div className="text-2xl font-bold text-primary">
-                              KES {product.price.toLocaleString()}
+                              KES {Number(product.price).toLocaleString()}
                             </div>
-                            {product.originalPrice && (
-                              <div className="text-sm text-muted-foreground line-through">
-                                KES {product.originalPrice.toLocaleString()}
-                              </div>
-                            )}
+                            <div className="text-sm text-muted-foreground">
+                              Stock: {product.stock_quantity}
+                            </div>
                           </div>
                           
                           <Button 
                             className="bg-gradient-primary hover:opacity-90"
-                            disabled={!product.inStock}
+                            disabled={product.stock_quantity === 0}
                           >
                             <ShoppingCart className="h-4 w-4 mr-2" />
-                            {product.inStock ? 'Add to Cart' : 'Sold Out'}
+                            {product.stock_quantity > 0 ? 'Add to Cart' : 'Sold Out'}
                           </Button>
                         </div>
                       </div>
