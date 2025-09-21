@@ -19,8 +19,10 @@ import {
   Upload,
   CreditCard,
   Star,
-  Phone
+  Phone,
+  Settings
 } from 'lucide-react';
+import PricingModal from '@/components/driver/PricingModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -29,6 +31,7 @@ export default function DriverDashboard() {
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [driverProfile, setDriverProfile] = useState({
+    id: '',
     vehicle_type: '',
     vehicle_number: '',
     license_number: '',
@@ -40,6 +43,7 @@ export default function DriverDashboard() {
     month: 0
   });
   const [activeRides, setActiveRides] = useState([]);
+  const [pricingModalOpen, setPricingModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -284,6 +288,15 @@ export default function DriverDashboard() {
                 <Button onClick={updateDriverProfile} disabled={loading} className="w-full">
                   {loading ? 'Updating...' : 'Update Profile'}
                 </Button>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPricingModalOpen(true)}
+                  className="w-full mt-2"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Set Pricing
+                </Button>
               </CardContent>
             </Card>
           </motion.div>
@@ -352,6 +365,13 @@ export default function DriverDashboard() {
             </Card>
           </motion.div>
         </div>
+        
+        {/* Pricing Modal */}
+        <PricingModal 
+          isOpen={pricingModalOpen}
+          onClose={() => setPricingModalOpen(false)}
+          driverId={driverProfile.id || ''}
+        />
       </div>
     </div>
   );

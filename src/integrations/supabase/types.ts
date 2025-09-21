@@ -141,6 +141,50 @@ export type Database = {
           },
         ]
       }
+      driver_pricing: {
+        Row: {
+          base_fare: number
+          created_at: string | null
+          driver_id: string | null
+          id: string
+          minimum_fare: number
+          per_km_rate: number
+          ride_type: string
+          updated_at: string | null
+          waiting_charge: number
+        }
+        Insert: {
+          base_fare?: number
+          created_at?: string | null
+          driver_id?: string | null
+          id?: string
+          minimum_fare?: number
+          per_km_rate?: number
+          ride_type?: string
+          updated_at?: string | null
+          waiting_charge?: number
+        }
+        Update: {
+          base_fare?: number
+          created_at?: string | null
+          driver_id?: string | null
+          id?: string
+          minimum_fare?: number
+          per_km_rate?: number
+          ride_type?: string
+          updated_at?: string | null
+          waiting_charge?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_pricing_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           created_at: string | null

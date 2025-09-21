@@ -15,6 +15,7 @@ import {
   Plus,
   Minus
 } from 'lucide-react';
+import CartModal from '@/components/cart/CartModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -48,6 +49,7 @@ export default function Food() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cartModalOpen, setCartModalOpen] = useState(false);
 
   useEffect(() => {
     fetchMenuItems();
@@ -109,17 +111,22 @@ export default function Food() {
   };
 
   const removeFromCart = (itemId: string) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === itemId);
-      if (existing && existing.quantity > 1) {
-        return prev.map(item =>
-          item.id === itemId
-            ? { ...item, quantity: item.quantity - 1 }
-            : item
-        );
-      }
-      return prev.filter(item => item.id !== itemId);
-    });
+    setCart(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const updateQuantity = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(itemId);
+      return;
+    }
+    
+    setCart(prev => prev.map(item =>
+      item.id === itemId ? { ...item, quantity } : item
+    ));
+  };
+
+  const clearCart = () => {
+    setCart([]);
   };
 
   const filteredItems = menuItems.filter(item =>
@@ -150,7 +157,10 @@ export default function Food() {
             </div>
             
             {cartItemsCount > 0 && (
-              <Button className="relative">
+              <Button 
+                className="relative"
+                onClick={() => setCartModalOpen(true)}
+              >
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 Cart ({cartItemsCount})
                 <Badge className="absolute -top-2 -right-2 bg-red-500">
@@ -235,7 +245,12 @@ export default function Food() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => {
+                              const cartItem = cart.find(cartItem => cartItem.id === item.id);
+                              if (cartItem) {
+                                updateQuantity(item.id, cartItem.quantity - 1);
+                              }
+                            }}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -287,12 +302,25 @@ export default function Food() {
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Cart Total</p>
               <p className="text-xl font-bold">KES {cartTotal}</p>
-              <Button className="w-full mt-2">
+              <Button 
+                className="w-full mt-2"
+                onClick={() => setCartModalOpen(true)}
+              >
                 Checkout ({cartItemsCount} items)
               </Button>
             </div>
           </motion.div>
         )}
+
+        {/* Cart Modal */}
+        <CartModal
+          isOpen={cartModalOpen}
+          onClose={() => setCartModalOpen(false)}
+          cart={cart}
+          updateQuantity={updateQuantity}
+          removeFromCart={removeFromCart}
+          clearCart={clearCart}
+        />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   MapPin, 
@@ -14,10 +15,12 @@ import {
   User,
   Phone,
   Navigation,
-  CreditCard
+  CreditCard,
+  DollarSign
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import LiveMap from '@/components/maps/LiveMap';
 
 interface Driver {
   id: string;
@@ -41,10 +44,34 @@ export default function Taxi() {
   const [availableDrivers, setAvailableDrivers] = useState<Driver[]>([]);
   const [estimatedFare, setEstimatedFare] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [activeRide, setActiveRide] = useState<any>(null);
 
   useEffect(() => {
     fetchAvailableDrivers();
-  }, []);
+    if (user) {
+      checkActiveRide();
+    }
+  }, [user]);
+
+  const checkActiveRide = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('customer_id', user.id)
+        .in('status', ['requested', 'accepted', 'ongoing'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        setActiveRide(data[0]);
+      }
+    } catch (error) {
+      console.error('Error checking active ride:', error);
+    }
+  };
 
   const fetchAvailableDrivers = async () => {
     try {
@@ -133,6 +160,9 @@ export default function Taxi() {
       setPickupAddress('');
       setDropoffAddress('');
       setSpecialInstructions('');
+      
+      // Check for the new ride
+      checkActiveRide();
     } catch (error) {
       console.error('Error booking ride:', error);
       toast({
@@ -163,7 +193,41 @@ export default function Taxi() {
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Booking Form */}
+          {/* Live Map - Show if there's an active ride */}
+          {activeRide && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="lg:col-span-3 mb-8"
+            >
+              <LiveMap
+                rideId={activeRide.id}
+                pickupLocation={{
+                  lat: activeRide.pickup_latitude,
+                  lng: activeRide.pickup_longitude,
+                  address: activeRide.pickup_address
+                }}
+                dropoffLocation={{
+                  lat: activeRide.dropoff_latitude,
+                  lng: activeRide.dropoff_longitude,
+                  address: activeRide.dropoff_address
+                }}
+                rideStatus={activeRide.status}
+                estimatedArrival="5-10 minutes"
+                driverInfo={
+                  availableDrivers.find(d => d.id === activeRide.driver_id) ? {
+                    name: availableDrivers.find(d => d.id === activeRide.driver_id)?.users?.full_name || 'Driver',
+                    phone: availableDrivers.find(d => d.id === activeRide.driver_id)?.users?.phone || '',
+                    vehicle: availableDrivers.find(d => d.id === activeRide.driver_id)?.vehicle_type || '',
+                    plateNumber: availableDrivers.find(d => d.id === activeRide.driver_id)?.vehicle_number || ''
+                  } : undefined
+                }
+              />
+            </motion.div>
+          )}
+
+          {/* Booking Form - Hide if there's an active ride */}
+          {!activeRide && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -265,6 +329,80 @@ export default function Taxi() {
               </CardContent>
             </Card>
           </motion.div>
+          )}
+
+          {/* Active Ride Status - Show if there's an active ride */}
+          {activeRide && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="lg:col-span-2 space-y-6"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Current Ride</span>
+                    <Badge className={
+                      activeRide.status === 'requested' ? 'bg-yellow-500' :
+                      activeRide.status === 'accepted' ? 'bg-blue-500' :
+                      activeRide.status === 'ongoing' ? 'bg-green-500' : 'bg-gray-500'
+                    }>
+                      {activeRide.status.charAt(0).toUpperCase() + activeRide.status.slice(1)}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="font-medium">From: {activeRide.pickup_address}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Navigation className="h-4 w-4 text-gold" />
+                      <div>
+                        <p className="font-medium">To: {activeRide.dropoff_address}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <p className="font-medium">Fare: KES {activeRide.fare}</p>
+                    </div>
+                  </div>
+
+                  {activeRide.status === 'requested' && (
+                    <div className="bg-yellow-50 p-3 rounded-lg">
+                      <p className="text-yellow-800 text-sm">
+                        🔍 Looking for nearby drivers...
+                      </p>
+                    </div>
+                  )}
+
+                  {activeRide.status === 'accepted' && (
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-blue-800 text-sm">
+                        🚗 Driver is on the way to pick you up
+                      </p>
+                    </div>
+                  )}
+
+                  {activeRide.status === 'ongoing' && (
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-green-800 text-sm">
+                        🎯 On your way to destination
+                      </p>
+                    </div>
+                  )}
+
+                  <Button variant="outline" className="w-full">
+                    <Phone className="h-4 w-4 mr-2" />
+                    Contact Driver
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Available Drivers */}
           <motion.div
