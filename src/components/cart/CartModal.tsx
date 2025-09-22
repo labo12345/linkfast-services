@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
+import { MpesaModal } from '@/components/payment/MpesaModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -50,12 +51,9 @@ export default function CartModal({
   clearCart 
 }: CartModalProps) {
   const { user } = useAuth();
-  const [paymentMethod, setPaymentMethod] = useState('mpesa');
-  const [mpesaNumber, setMpesaNumber] = useState('');
-  const [tillNumber, setTillNumber] = useState('');
-  const [paybillNumber, setPaybillNumber] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
+  const [selectedPayment, setSelectedPayment] = useState('cash');
   const [loading, setLoading] = useState(false);
+  const [showMpesaModal, setShowMpesaModal] = useState(false);
 
   const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   const deliveryFee = cart.length > 0 ? cart[0]?.restaurant?.delivery_fee || 50 : 0;
@@ -69,132 +67,39 @@ export default function CartModal({
     }
   };
 
-  const handleCheckout = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to complete your order",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (cart.length === 0) {
-      toast({
-        title: "Empty Cart",
-        description: "Please add items to your cart before checkout",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (paymentMethod === 'mpesa' && !mpesaNumber) {
-      toast({
-        title: "M-Pesa Number Required",
-        description: "Please enter your M-Pesa phone number",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (paymentMethod === 'till' && !tillNumber) {
-      toast({
-        title: "Till Number Required",
-        description: "Please enter the till number",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (paymentMethod === 'paybill' && (!paybillNumber || !accountNumber)) {
-      toast({
-        title: "Paybill Details Required",
-        description: "Please enter both paybill number and account number",
-        variant: "destructive"
-      });
+  const handleCheckout = () => {
+    if (selectedPayment === 'mpesa') {
+      setShowMpesaModal(true);
       return;
     }
 
     setLoading(true);
-    try {
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: user.id,
-          restaurant_id: cart[0]?.restaurant ? 'restaurant-id' : null,
-          total_amount: total,
-          delivery_fee: deliveryFee,
-          payment_method: paymentMethod as any,
-          order_type: 'food',
-          status: 'pending',
-          special_instructions: `Payment via ${paymentMethod}${mpesaNumber ? ` to ${mpesaNumber}` : ''}`
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      for (const item of cart) {
-        await supabase
-          .from('order_items')
-          .insert({
-            order_id: order.id,
-            menu_item_id: item.id,
-            quantity: item.quantity,
-            unit_price: item.price
-          });
-      }
-
-      // Create transaction record
-      await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          order_id: order.id,
-          amount: total,
-          provider: paymentMethod as any,
-          status: 'pending',
-          metadata: {
-            payment_method: paymentMethod,
-            phone_number: mpesaNumber,
-            till_number: tillNumber,
-            paybill_number: paybillNumber,
-            account_number: accountNumber
-          }
-        });
-
+    
+    // Simulate order processing for other payment methods
+    setTimeout(() => {
       toast({
-        title: "Order Placed Successfully!",
-        description: `Order #${order.id.slice(0, 8)} - Total: KES ${total}. ${getPaymentInstructions()}`
+        title: "Order placed!",
+        description: "Your order has been placed successfully. You'll receive a confirmation shortly.",
       });
-
+      
+      // Clear cart and close modal
       clearCart();
       onClose();
-    } catch (error) {
-      console.error('Checkout error:', error);
-      toast({
-        title: "Checkout Failed",
-        description: "Please try again or contact support",
-        variant: "destructive"
-      });
-    } finally {
       setLoading(false);
-    }
+    }, 2000);
   };
 
-  const getPaymentInstructions = () => {
-    switch (paymentMethod) {
-      case 'mpesa':
-        return `You'll receive an M-Pesa prompt on ${mpesaNumber}`;
-      case 'till':
-        return `Pay to Till Number: ${tillNumber}`;
-      case 'paybill':
-        return `Pay to Paybill: ${paybillNumber}, Account: ${accountNumber}`;
-      default:
-        return 'Payment instructions will be provided';
-    }
+  const handleMpesaPaymentComplete = (transactionId: string) => {
+    // Process successful M-Pesa payment
+    toast({
+      title: "Payment successful!",
+      description: `Order confirmed. Transaction ID: ${transactionId}`,
+    });
+    
+    // Clear cart and close modals
+    clearCart();
+    setShowMpesaModal(false);
+    onClose();
   };
 
   return (
@@ -307,7 +212,7 @@ export default function CartModal({
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Payment Method</Label>
                 
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <Select value={selectedPayment} onValueChange={setSelectedPayment}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -315,71 +220,17 @@ export default function CartModal({
                     <SelectItem value="mpesa">
                       <div className="flex items-center gap-2">
                         <Smartphone className="h-4 w-4" />
-                        M-Pesa (Mobile Money)
+                        M-Pesa Payment
                       </div>
                     </SelectItem>
-                    <SelectItem value="till">
+                    <SelectItem value="cash">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
-                        Lipa na M-Pesa (Till Number)
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="paybill">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        PayBill
+                        Cash on Delivery
                       </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
-
-                {/* Payment Details */}
-                {paymentMethod === 'mpesa' && (
-                  <div>
-                    <Label htmlFor="mpesa">M-Pesa Phone Number</Label>
-                    <Input
-                      id="mpesa"
-                      placeholder="e.g., 0712345678"
-                      value={mpesaNumber}
-                      onChange={(e) => setMpesaNumber(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {paymentMethod === 'till' && (
-                  <div>
-                    <Label htmlFor="till">Till Number</Label>
-                    <Input
-                      id="till"
-                      placeholder="Enter till number"
-                      value={tillNumber}
-                      onChange={(e) => setTillNumber(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {paymentMethod === 'paybill' && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="paybill">PayBill Number</Label>
-                      <Input
-                        id="paybill"
-                        placeholder="Enter paybill number"
-                        value={paybillNumber}
-                        onChange={(e) => setPaybillNumber(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="account">Account Number</Label>
-                      <Input
-                        id="account"
-                        placeholder="Enter account number"
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Checkout Button */}
@@ -389,12 +240,19 @@ export default function CartModal({
                 className="w-full bg-gradient-primary hover:opacity-90"
                 size="lg"
               >
-                {loading ? 'Processing...' : `Pay KES ${total} - Place Order`}
+                {loading ? 'Processing...' : `Place Order - KES ${total}`}
               </Button>
             </>
           )}
         </div>
       </DialogContent>
+
+      <MpesaModal
+        isOpen={showMpesaModal}
+        onClose={() => setShowMpesaModal(false)}
+        amount={total}
+        onPaymentComplete={handleMpesaPaymentComplete}
+      />
     </Dialog>
   );
 }

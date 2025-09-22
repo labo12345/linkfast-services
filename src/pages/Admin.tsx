@@ -23,6 +23,172 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+// Driver Management Component
+function DriverManagement() {
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
+
+  const fetchDrivers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select(`
+          *,
+          users (
+            full_name,
+            phone,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setDrivers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyDriver = async (driverId: string) => {
+    try {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ is_verified: true })
+        .eq('id', driverId);
+
+      if (!error) {
+        toast({
+          title: "Driver verified",
+          description: "Driver has been successfully verified"
+        });
+        fetchDrivers();
+      }
+    } catch (error) {
+      console.error('Error verifying driver:', error);
+      toast({
+        title: "Error",
+        description: "Failed to verify driver",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const unverifyDriver = async (driverId: string) => {
+    try {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ is_verified: false })
+        .eq('id', driverId);
+
+      if (!error) {
+        toast({
+          title: "Driver unverified",
+          description: "Driver verification has been removed"
+        });
+        fetchDrivers();
+      }
+    } catch (error) {
+      console.error('Error unverifying driver:', error);
+      toast({
+        title: "Error",
+        description: "Failed to unverify driver",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">Loading drivers...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Driver Management</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {drivers.length === 0 ? (
+          <div className="text-center py-8">
+            <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Drivers</h3>
+            <p className="text-muted-foreground">No drivers have registered yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {drivers.map((driver) => (
+              <div key={driver.id} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Car className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">
+                        {driver.users?.full_name || 'Unknown Driver'}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {driver.users?.phone || 'No phone'}
+                      </p>
+                      <div className="flex gap-2 mt-1">
+                        <Badge variant={driver.is_verified ? 'default' : 'secondary'}>
+                          {driver.is_verified ? 'Verified' : 'Unverified'}
+                        </Badge>
+                        <Badge variant={driver.is_online ? 'default' : 'outline'}>
+                          {driver.is_online ? 'Online' : 'Offline'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    {driver.is_verified ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => unverifyDriver(driver.id)}
+                      >
+                        Unverify
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => verifyDriver(driver.id)}
+                      >
+                        Verify
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {(driver.vehicle_type || driver.vehicle_number) && (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    <p>Vehicle: {driver.vehicle_type}</p>
+                    <p>License: {driver.vehicle_number}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface DashboardStats {
   totalUsers: number;
   totalOrders: number;
@@ -366,20 +532,7 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="drivers">
-            <Card>
-              <CardHeader>
-                <CardTitle>Driver Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Car className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Driver Management</h3>
-                  <p className="text-muted-foreground">
-                    Driver management features coming soon.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <DriverManagement />
           </TabsContent>
 
           <TabsContent value="settings">

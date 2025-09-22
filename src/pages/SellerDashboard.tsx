@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { TransactionsDashboard } from '@/components/transactions/TransactionsDashboard';
 
 export default function SellerDashboard() {
   const { user } = useAuth();
@@ -44,7 +45,8 @@ export default function SellerDashboard() {
     price: '',
     stock_quantity: '',
     category_id: '',
-    images: []
+    images: [],
+    featured_image: ''
   });
 
   useEffect(() => {
@@ -126,6 +128,52 @@ export default function SellerDashboard() {
     setLoading(false);
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image under 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      setNewProduct({ ...newProduct, featured_image: publicUrl });
+      
+      toast({
+        title: "Image uploaded",
+        description: "Product image uploaded successfully"
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
+  };
+
   const addProduct = async () => {
     setLoading(true);
     try {
@@ -156,7 +204,8 @@ export default function SellerDashboard() {
             price: '',
             stock_quantity: '',
             category_id: '',
-            images: []
+            images: [],
+            featured_image: ''
           });
           setShowAddProduct(false);
           fetchProducts();
@@ -387,6 +436,39 @@ export default function SellerDashboard() {
                         rows={3}
                       />
                     </div>
+                    
+                    {/* Image Upload */}
+                    <div>
+                      <Label htmlFor="productImage">Product Image</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="productImage"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('productImage')?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload
+                        </Button>
+                      </div>
+                      {newProduct.featured_image && (
+                        <div className="mt-2">
+                          <img 
+                            src={newProduct.featured_image} 
+                            alt="Product preview" 
+                            className="w-20 h-20 object-cover rounded border"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex gap-2">
                       <Button onClick={addProduct} disabled={loading}>
                         {loading ? 'Adding...' : 'Add Product'}
@@ -446,6 +528,16 @@ export default function SellerDashboard() {
             </Card>
           </motion.div>
         </div>
+
+        {/* Transactions Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="mt-8"
+        >
+          <TransactionsDashboard userRole="seller" />
+        </motion.div>
       </div>
     </div>
   );

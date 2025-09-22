@@ -235,6 +235,57 @@ export type Database = {
           },
         ]
       }
+      errand_orders: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          customer_id: string
+          delivery_address: string | null
+          errand_details: string
+          id: string
+          payment_method: string | null
+          payment_status: string | null
+          pickup_address: string
+          service_type: string
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+          urgency: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          customer_id: string
+          delivery_address?: string | null
+          errand_details: string
+          id?: string
+          payment_method?: string | null
+          payment_status?: string | null
+          pickup_address: string
+          service_type: string
+          status?: string | null
+          total_amount: number
+          updated_at?: string | null
+          urgency?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          customer_id?: string
+          delivery_address?: string | null
+          errand_details?: string
+          id?: string
+          payment_method?: string | null
+          payment_status?: string | null
+          pickup_address?: string
+          service_type?: string
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+          urgency?: string | null
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           category_id: string | null
@@ -471,6 +522,7 @@ export type Database = {
           category_id: string | null
           created_at: string | null
           description: string | null
+          featured_image: string | null
           id: string
           images: string[] | null
           is_active: boolean | null
@@ -485,6 +537,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          featured_image?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -499,6 +552,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string | null
           description?: string | null
+          featured_image?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -534,6 +588,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string | null
           description: string | null
+          featured_image: string | null
           id: string
           images: string[] | null
           is_active: boolean | null
@@ -544,6 +599,7 @@ export type Database = {
           seller_id: string | null
           size: string | null
           title: string
+          updated_at: string | null
         }
         Insert: {
           bathrooms?: number | null
@@ -552,6 +608,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           description?: string | null
+          featured_image?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -562,6 +619,7 @@ export type Database = {
           seller_id?: string | null
           size?: string | null
           title: string
+          updated_at?: string | null
         }
         Update: {
           bathrooms?: number | null
@@ -570,6 +628,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string | null
           description?: string | null
+          featured_image?: string | null
           id?: string
           images?: string[] | null
           is_active?: boolean | null
@@ -580,6 +639,7 @@ export type Database = {
           seller_id?: string | null
           size?: string | null
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -593,6 +653,7 @@ export type Database = {
       }
       restaurants: {
         Row: {
+          cover_image: string | null
           created_at: string | null
           cuisine_type: string | null
           delivery_fee: number | null
@@ -604,8 +665,10 @@ export type Database = {
           name: string
           rating: number | null
           seller_id: string | null
+          updated_at: string | null
         }
         Insert: {
+          cover_image?: string | null
           created_at?: string | null
           cuisine_type?: string | null
           delivery_fee?: number | null
@@ -617,8 +680,10 @@ export type Database = {
           name: string
           rating?: number | null
           seller_id?: string | null
+          updated_at?: string | null
         }
         Update: {
+          cover_image?: string | null
           created_at?: string | null
           cuisine_type?: string | null
           delivery_fee?: number | null
@@ -630,6 +695,7 @@ export type Database = {
           name?: string
           rating?: number | null
           seller_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {

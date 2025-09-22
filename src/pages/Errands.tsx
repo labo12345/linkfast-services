@@ -18,6 +18,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ErrandService {
   id: string;
@@ -124,20 +125,44 @@ export default function Errands() {
 
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { error } = await supabase
+        .from('errand_orders')
+        .insert({
+          customer_id: user.id,
+          service_type: selectedService.id,
+          pickup_address: pickupAddress,
+          delivery_address: deliveryAddress || null,
+          errand_details: errandDetails,
+          urgency: urgency,
+          total_amount: calculatePrice(),
+          payment_method: paymentMethod
+        });
+
+      if (!error) {
+        toast({
+          title: "Errand request submitted!",
+          description: "We'll assign someone to help you shortly",
+        });
+        
+        // Reset form
+        setSelectedService(null);
+        setPickupAddress('');
+        setDeliveryAddress('');
+        setErrandDetails('');
+      } else {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error creating errand order:', error);
       toast({
-        title: "Errand request submitted!",
-        description: "We'll assign someone to help you shortly",
+        title: "Error",
+        description: "Failed to submit errand request. Please try again.",
+        variant: "destructive",
       });
-      
-      // Reset form
-      setSelectedService(null);
-      setPickupAddress('');
-      setDeliveryAddress('');
-      setErrandDetails('');
-      setLoading(false);
-    }, 1500);
+    }
+    
+    setLoading(false);
   };
 
   return (

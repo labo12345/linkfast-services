@@ -55,15 +55,21 @@ export default function DriverDashboard() {
 
   const fetchDriverProfile = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('drivers')
         .select('*')
         .eq('user_id', user?.id)
         .single();
       
       if (data) {
-        setDriverProfile(data);
         setIsOnline(data.is_online);
+        setDriverProfile({
+          id: data.id,
+          vehicle_type: data.vehicle_type || '',
+          vehicle_number: data.vehicle_number || '',
+          license_number: data.license_number || '',
+          is_verified: data.is_verified
+        });
       }
     } catch (error) {
       console.error('Error fetching driver profile:', error);
@@ -96,24 +102,41 @@ export default function DriverDashboard() {
   };
 
   const toggleOnlineStatus = async () => {
-    setLoading(true);
     try {
-      const { error } = await supabase
+      const { data: driverData } = await supabase
         .from('drivers')
-        .update({ is_online: !isOnline })
-        .eq('user_id', user?.id);
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
 
-      if (!error) {
-        setIsOnline(!isOnline);
-        toast({
-          title: isOnline ? "You're now offline" : "You're now online",
-          description: isOnline ? "You won't receive ride requests" : "You can now receive ride requests"
-        });
+      if (driverData) {
+        const { error } = await supabase
+          .from('drivers')
+          .update({ is_online: !isOnline })
+          .eq('id', driverData.id);
+
+        if (!error) {
+          setIsOnline(!isOnline);
+          toast({
+            title: isOnline ? "Going offline" : "Going online",
+            description: isOnline ? "You are now offline" : "You are now online and available for rides"
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to update status",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
-      console.error('Error updating online status:', error);
+      console.error('Error toggling online status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive"
+      });
     }
-    setLoading(false);
   };
 
   const updateDriverProfile = async () => {
