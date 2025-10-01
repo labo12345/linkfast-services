@@ -45,7 +45,8 @@ export default function PropertySellerDashboard() {
     contact_phone: '',
     contact_email: '',
     latitude: '',
-    longitude: ''
+    longitude: '',
+    featured_image: ''
   });
 
   useEffect(() => {
@@ -111,7 +112,8 @@ export default function PropertySellerDashboard() {
           contact_phone: '',
           contact_email: '',
           latitude: '',
-          longitude: ''
+          longitude: '',
+          featured_image: ''
         });
         setShowAddProperty(false);
         fetchProperties();
@@ -333,6 +335,39 @@ export default function PropertySellerDashboard() {
                       rows={3}
                     />
                   </div>
+                  
+                  {/* Image Upload */}
+                  <div>
+                    <Label htmlFor="propertyImage">Property Image</Label>
+                    <Input
+                      id="propertyImage"
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setLoading(true);
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const fileName = `${Math.random()}.${fileExt}`;
+                          const filePath = `properties/${fileName}`;
+                          const { error: uploadError } = await supabase.storage
+                            .from('properties')
+                            .upload(filePath, file);
+                          if (uploadError) throw uploadError;
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('properties')
+                            .getPublicUrl(filePath);
+                          setNewProperty({ ...newProperty, featured_image: publicUrl });
+                          toast({ title: "Image uploaded", description: "Property image uploaded successfully" });
+                        } catch (error) {
+                          toast({ title: "Upload failed", description: "Failed to upload image", variant: "destructive" });
+                        }
+                        setLoading(false);
+                      }}
+                    />
+                  </div>
+                  
                   <div className="flex gap-2">
                     <Button onClick={addProperty} disabled={loading}>
                       {loading ? 'Adding...' : 'Add Property'}

@@ -130,20 +130,22 @@ const Index = () => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="relative"
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 {services.map((service, index) => {
                   const Icon = service.icon;
                   return (
                     <motion.div
                       key={service.title}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
-                      className={`bg-gradient-to-br ${service.color} rounded-2xl p-6 text-white hover:scale-105 transition-transform cursor-pointer shadow-elegant`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(212, 175, 55, 0.4)' }}
+                      transition={{ duration: 0.3 }}
+                      className={`bg-gradient-to-br ${service.color} rounded-2xl p-4 text-white cursor-pointer shadow-elegant relative overflow-hidden group`}
                       onClick={() => handleServiceClick(service.href)}
                     >
-                      <Icon className="h-8 w-8 mb-2" />
-                      <h3 className="font-semibold text-lg">{service.title}</h3>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <Icon className="h-6 w-6 mb-1 relative z-10" />
+                      <h3 className="font-semibold text-sm relative z-10">{service.title}</h3>
                     </motion.div>
                   );
                 })}
@@ -171,9 +173,140 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Services Section */}
+      {/* Animated Showcase Section */}
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Discover What's <span className="text-primary">Available</span>
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              From delicious meals to dream properties - explore our marketplace
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {/* Properties Showcase */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              whileHover={{ y: -10 }}
+              className="group cursor-pointer"
+              onClick={() => handleServiceClick('/properties')}
+            >
+              <Card className="overflow-hidden border-2 hover:border-primary/20 transition-all">
+                <div className="relative h-48 overflow-hidden">
+                  <motion.img 
+                    src="/src/assets/property-house.webp"
+                    alt="Properties"
+                    className="w-full h-full object-cover"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.4 }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <Badge className="absolute top-4 right-4 bg-gold text-gold-foreground">
+                    Properties
+                  </Badge>
+                </div>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                    Find Your Dream Home
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Browse verified listings for houses, apartments, and land
+                  </p>
+                  <Button className="w-full bg-gradient-primary hover:opacity-90">
+                    View Properties <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Food Showcase */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              whileHover={{ y: -10 }}
+              className="group cursor-pointer"
+              onClick={() => handleServiceClick('/food')}
+            >
+              <Card className="overflow-hidden border-2 hover:border-gold/20 transition-all">
+                <div className="relative h-48 overflow-hidden">
+                  <motion.img 
+                    src="/src/assets/food-burger.webp"
+                    alt="Fast Food"
+                    className="w-full h-full object-cover"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.4 }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground">
+                    Fast Food
+                  </Badge>
+                </div>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-gold transition-colors">
+                    Delicious Meals Delivered
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Order from top restaurants and enjoy hot meals fast
+                  </p>
+                  <Button className="w-full bg-gradient-gold hover:opacity-90">
+                    Order Now <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Products Showcase */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              whileHover={{ y: -10 }}
+              className="group cursor-pointer"
+              onClick={() => handleServiceClick('/marketplace')}
+            >
+              <Card className="overflow-hidden border-2 hover:border-primary/20 transition-all">
+                <div className="relative h-48 overflow-hidden">
+                  <motion.img 
+                    src="/src/assets/category-electronics.webp"
+                    alt="Products"
+                    className="w-full h-full object-cover"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.4 }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <Badge className="absolute top-4 right-4 bg-gold text-gold-foreground">
+                    Marketplace
+                  </Badge>
+                </div>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                    Shop Local Products
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Discover quality products from verified local sellers
+                  </p>
+                  <Button className="w-full bg-gradient-primary hover:opacity-90">
+                    Shop Now <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

@@ -459,6 +459,42 @@ export default function RestaurantDashboard() {
                         rows={3}
                       />
                     </div>
+                    
+                    {/* Image Upload */}
+                    <div>
+                      <Label htmlFor="menuItemImage">Menu Item Image</Label>
+                      <Input
+                        id="menuItemImage"
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setLoading(true);
+                          try {
+                            const fileExt = file.name.split('.').pop();
+                            const fileName = `${Math.random()}.${fileExt}`;
+                            const filePath = `restaurants/${fileName}`;
+                            const { error: uploadError } = await supabase.storage
+                              .from('restaurants')
+                              .upload(filePath, file);
+                            if (uploadError) throw uploadError;
+                            const { data: { publicUrl } } = supabase.storage
+                              .from('restaurants')
+                              .getPublicUrl(filePath);
+                            setNewMenuItem({ ...newMenuItem, image_url: publicUrl });
+                            toast({ title: "Image uploaded", description: "Menu item image uploaded successfully" });
+                          } catch (error) {
+                            toast({ title: "Upload failed", description: "Failed to upload image", variant: "destructive" });
+                          }
+                          setLoading(false);
+                        }}
+                      />
+                      {newMenuItem.image_url && (
+                        <img src={newMenuItem.image_url} alt="Preview" className="w-20 h-20 object-cover rounded mt-2" />
+                      )}
+                    </div>
+                    
                     <div className="flex gap-2">
                       <Button onClick={addMenuItem} disabled={loading}>
                         {loading ? 'Adding...' : 'Add Menu Item'}
