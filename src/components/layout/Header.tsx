@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, User, LogOut, ShoppingBag, Truck, Home, Building, Bell, ShoppingCart } from 'lucide-react';
+import { Menu, X, User, LogOut, ShoppingBag, Truck, Home, Building, Bell, ShoppingCart, Package } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -22,7 +22,8 @@ export const Header = () => {
   const navigation = [
     { name: 'Marketplace', href: '/marketplace', icon: ShoppingBag },
     { name: 'Fast Food', href: '/food', icon: Home },
-    { name: 'Taxi & Errands', href: '/taxi', icon: Truck },
+    { name: 'Taxi', href: '/taxi', icon: Truck },
+    { name: 'Errands', href: '/errands', icon: Package },
     { name: 'Properties', href: '/properties', icon: Building },
   ];
 
