@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { MessageCircle, Send, Loader2, Sparkles } from 'lucide-react';
 
 interface ErrandService {
   id: string;
@@ -89,6 +90,10 @@ export default function Errands() {
   const [urgency, setUrgency] = useState('normal');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [loading, setLoading] = useState(false);
+  const [aiMessages, setAiMessages] = useState<{role: string, content: string}[]>([]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiChat, setShowAiChat] = useState(false);
 
   const handleServiceSelect = (service: ErrandService) => {
     setSelectedService(service);
@@ -102,6 +107,35 @@ export default function Errands() {
     if (urgency === 'express') price *= 2;
     
     return Math.round(price);
+  };
+
+  const handleAiChat = async () => {
+    if (!aiInput.trim()) return;
+
+    const userMessage = { role: 'user', content: aiInput };
+    setAiMessages(prev => [...prev, userMessage]);
+    setAiInput('');
+    setAiLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('errand-ai-assistant', {
+        body: { message: aiInput }
+      });
+
+      if (error) throw error;
+
+      const assistantMessage = { role: 'assistant', content: data.message };
+      setAiMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('AI error:', error);
+      toast({
+        title: "AI Assistant Error",
+        description: "Failed to get response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleRequestErrand = async () => {
@@ -351,12 +385,82 @@ export default function Errands() {
             )}
           </motion.div>
 
-          {/* Contact & Info */}
+          {/* AI Assistant & Info */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
+            {/* AI Assistant Card */}
+            <Card className="border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    AI Assistant
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowAiChat(!showAiChat)}
+                  >
+                    {showAiChat ? 'Hide' : 'Show'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Powered by Gemini - Ask me anything about errands!
+                </p>
+              </CardHeader>
+              {showAiChat && (
+                <CardContent className="space-y-3">
+                  <div className="h-64 overflow-y-auto space-y-3 p-3 bg-muted/30 rounded-lg">
+                    {aiMessages.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-center text-sm text-muted-foreground">
+                        <div>
+                          <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          Ask me to help you describe your errand!
+                        </div>
+                      </div>
+                    ) : (
+                      aiMessages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-lg text-sm ${
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground ml-8'
+                              : 'bg-background mr-8'
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                      ))
+                    )}
+                    {aiLoading && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        AI is thinking...
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ask about errands..."
+                      value={aiInput}
+                      onChange={(e) => setAiInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAiChat()}
+                      disabled={aiLoading}
+                    />
+                    <Button
+                      size="icon"
+                      onClick={handleAiChat}
+                      disabled={aiLoading || !aiInput.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>How It Works</CardTitle>
