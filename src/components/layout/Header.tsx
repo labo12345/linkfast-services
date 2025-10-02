@@ -37,14 +37,17 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => navigate('/admin')}
+              className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
+            >
               <span className="text-primary-foreground font-bold text-sm">Q</span>
-            </div>
-            <span className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
+            </button>
+            <Link to="/" className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
               QUICKLINK
-            </span>
-          </Link>
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
