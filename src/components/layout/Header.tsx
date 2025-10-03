@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, User, LogOut, ShoppingBag, Truck, Home, Building, Bell, ShoppingCart, Package } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { toast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import { PWAInstallButton } from '@/components/PWAInstallButton';
 export const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdminRole();
   const navigate = useNavigate();
 
   const navigation = [
@@ -38,12 +40,19 @@ export const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => navigate('/admin')}
-              className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <span className="text-primary-foreground font-bold text-sm">Q</span>
-            </button>
+            {isAdmin ? (
+              <button 
+                onClick={() => navigate('/admin')}
+                className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
+                title="Admin Dashboard"
+              >
+                <span className="text-primary-foreground font-bold text-sm">Q</span>
+              </button>
+            ) : (
+              <Link to="/" className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-sm">Q</span>
+              </Link>
+            )}
             <Link to="/" className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
               QUICKLINK
             </Link>

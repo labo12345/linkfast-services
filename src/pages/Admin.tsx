@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Admin() {
   const { user } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdminRole();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,40 +48,26 @@ export default function Admin() {
   });
 
   useEffect(() => {
+    if (adminLoading) return;
+    
     if (!user) {
       navigate('/auth');
       return;
     }
     
-    // Check if user is admin
-    checkAdminStatus();
-  }, [user, navigate]);
-
-  const checkAdminStatus = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user?.id)
-        .single();
-      
-      if (error || data?.role !== 'admin') {
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to access this page",
-          variant: "destructive",
-        });
-        navigate('/dashboard');
-        return;
-      }
-      
-      // If admin, load all data
-      fetchAllData();
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      navigate('/dashboard');
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access this page",
+        variant: "destructive",
+      });
+      navigate('/');
+      return;
     }
-  };
+    
+    // If admin, load all data
+    fetchAllData();
+  }, [user, isAdmin, adminLoading, navigate]);
 
   const fetchAllData = async () => {
     try {
@@ -197,7 +185,7 @@ export default function Admin() {
     setLoading(false);
   };
 
-  if (!user) return null;
+  if (adminLoading || !user || !isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-background">
