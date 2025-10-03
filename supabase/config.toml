@@ -2,3 +2,6 @@ project_id = "cktriqnfikxxjfaceato"
 
 [functions.errand-ai-assistant]
 verify_jwt = false
+
+[functions.global-ai-assistant]
+verify_jwt = false

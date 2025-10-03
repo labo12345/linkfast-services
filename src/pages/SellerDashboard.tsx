@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   ShoppingBag, 
   Plus, 
@@ -27,6 +28,7 @@ export default function SellerDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [sellerProfile, setSellerProfile] = useState({
     shop_name: '',
     shop_description: '',
@@ -51,11 +53,28 @@ export default function SellerDashboard() {
 
   useEffect(() => {
     if (user) {
+      fetchCategories();
       fetchSellerProfile();
       fetchProducts();
       fetchStats();
     }
   }, [user]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (data) {
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchSellerProfile = async () => {
     try {
@@ -175,6 +194,15 @@ export default function SellerDashboard() {
   };
 
   const addProduct = async () => {
+    if (!newProduct.name || !newProduct.price || !newProduct.stock_quantity || !newProduct.category_id) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields including category",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: sellerData } = await supabase
@@ -184,19 +212,25 @@ export default function SellerDashboard() {
         .single();
 
       if (sellerData) {
+        const productData = {
+          name: newProduct.name,
+          description: newProduct.description,
+          price: parseFloat(newProduct.price),
+          stock_quantity: parseInt(newProduct.stock_quantity),
+          category_id: newProduct.category_id,
+          seller_id: sellerData.id,
+          featured_image: newProduct.featured_image,
+          images: newProduct.featured_image ? [newProduct.featured_image] : []
+        };
+
         const { error } = await supabase
           .from('products')
-          .insert({
-            ...newProduct,
-            price: parseFloat(newProduct.price),
-            stock_quantity: parseInt(newProduct.stock_quantity),
-            seller_id: sellerData.id
-          });
+          .insert(productData);
 
         if (!error) {
           toast({
-            title: "Product added",
-            description: "Your product has been added successfully"
+            title: "Product added successfully!",
+            description: "Your product is now live in the marketplace"
           });
           setNewProduct({
             name: '',
@@ -209,10 +243,17 @@ export default function SellerDashboard() {
           });
           setShowAddProduct(false);
           fetchProducts();
+        } else {
+          throw error;
         }
       }
     } catch (error) {
       console.error('Error adding product:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add product. Please try again.",
+        variant: "destructive",
+      });
     }
     setLoading(false);
   };
@@ -411,19 +452,22 @@ export default function SellerDashboard() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="productCategory">Category</Label>
-                        <select
-                          id="productCategory"
+                        <Label htmlFor="productCategory">Category *</Label>
+                        <Select
                           value={newProduct.category_id}
-                          onChange={(e) => setNewProduct({...newProduct, category_id: e.target.value})}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          onValueChange={(value) => setNewProduct({...newProduct, category_id: value})}
                         >
-                          <option value="">Select category</option>
-                          <option value="electronics">Electronics</option>
-                          <option value="clothing">Clothing</option>
-                          <option value="home">Home & Garden</option>
-                          <option value="sports">Sports</option>
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category: any) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div>

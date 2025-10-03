@@ -49,9 +49,13 @@ export const Header = () => {
                 <span className="text-primary-foreground font-bold text-sm">Q</span>
               </button>
             ) : (
-              <Link to="/" className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center">
+              <button 
+                onClick={() => navigate('/admin-signup')}
+                className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
+                title="Admin Signup"
+              >
                 <span className="text-primary-foreground font-bold text-sm">Q</span>
-              </Link>
+              </button>
             )}
             <Link to="/" className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
               QUICKLINK
