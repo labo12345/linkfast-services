@@ -566,7 +566,7 @@ export default function RestaurantDashboard() {
                 </div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">{restaurant.name || 'Restaurant Name'}</h1>
+                <h1 className="text-xl font-bold text-white">{restaurant.name || 'APANDA'}</h1>
                 <p className="text-xs text-white/60">{restaurant.cuisine_type || 'Premium Dining'}</p>
               </div>
             </div>
