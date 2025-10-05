@@ -499,6 +499,103 @@ export default function RestaurantDashboard() {
           </div>
         );
 
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white text-2xl">Restaurant Profile</CardTitle>
+                  <Button
+                    onClick={updateRestaurant}
+                    disabled={loading}
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Save Changes
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-white/80">Restaurant Name</Label>
+                    <Input
+                      value={restaurant.name}
+                      onChange={(e) => setRestaurant({ ...restaurant, name: e.target.value })}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                      placeholder="Enter restaurant name"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white/80">Cuisine Type</Label>
+                    <Input
+                      value={restaurant.cuisine_type}
+                      onChange={(e) => setRestaurant({ ...restaurant, cuisine_type: e.target.value })}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                      placeholder="e.g., Italian, Chinese, etc."
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2 space-y-2">
+                    <Label className="text-white/80">Description</Label>
+                    <Textarea
+                      value={restaurant.description}
+                      onChange={(e) => setRestaurant({ ...restaurant, description: e.target.value })}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40 min-h-[100px]"
+                      placeholder="Describe your restaurant..."
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white/80">Minimum Order Amount (KSh)</Label>
+                    <Input
+                      type="number"
+                      value={restaurant.min_order_amount}
+                      onChange={(e) => setRestaurant({ ...restaurant, min_order_amount: e.target.value })}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-white/80">Delivery Fee (KSh)</Label>
+                    <Input
+                      type="number"
+                      value={restaurant.delivery_fee}
+                      onChange={(e) => setRestaurant({ ...restaurant, delivery_fee: e.target.value })}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10">
+                  <h3 className="text-white font-semibold mb-4">Restaurant Status</h3>
+                  <div className="flex items-center gap-4">
+                    <Badge className={restaurant.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                      {restaurant.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                    <p className="text-white/60 text-sm">
+                      {restaurant.is_active ? 'Your restaurant is accepting orders' : 'Your restaurant is not accepting orders'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-white">Payment Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white/60">Payment integration settings will be available here</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+
       default:
         return (
           <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">

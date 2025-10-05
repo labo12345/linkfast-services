@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.global-ai-assistant]
 verify_jwt = false
+
+[functions.mpesa-webhook]
+verify_jwt = false

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quicklink-v1';
+const CACHE_NAME = 'apanda-v1';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
@@ -24,7 +24,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Return cached version or fetch from network
         if (response) {
           return response;
         }
@@ -58,45 +57,43 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncOrders() {
-  // Handle offline orders when connection is restored
   console.log('Syncing offline orders...');
 }
 
 // Push notifications
 self.addEventListener('push', (event) => {
+  console.log('🔔 Push notification received:', event);
+  
+  const data = event.data ? event.data.json() : { 
+    title: 'APANDA', 
+    body: 'You have a new notification' 
+  };
+  
   const options = {
-    body: event.data.text(),
+    body: data.body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
-    actions: [
-      {
-        action: 'view',
-        title: 'View Order'
-      },
-      {
-        action: 'close',
-        title: 'Close'
-      }
+    vibrate: [200, 100, 200],
+    data: data,
+    actions: data.actions || [
+      { action: 'view', title: 'View' },
+      { action: 'close', title: 'Close' }
     ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('QUICKLINK Services', options)
+    self.registration.showNotification(data.title || 'APANDA', options)
   );
 });
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
+  console.log('🖱️ Notification clicked:', event);
   event.notification.close();
 
   if (event.action === 'view') {
     event.waitUntil(
-      clients.openWindow('/dashboard')
+      clients.openWindow(event.notification.data?.url || '/dashboard')
     );
   }
 });
