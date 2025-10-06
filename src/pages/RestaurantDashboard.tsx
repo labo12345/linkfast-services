@@ -39,14 +39,16 @@ export default function RestaurantDashboard() {
   const [menuItems, setMenuItems] = useState([]);
   const [stats, setStats] = useState({
     totalMenuItems: 0,
-    pendingOrders: 8,
-    preparingOrders: 5,
-    deliveredOrders: 142,
-    totalRevenue: 285000,
-    todayRevenue: 12500,
-    avgRating: 4.8,
-    vipGuests: 12
+    pendingOrders: 0,
+    preparingOrders: 0,
+    deliveredOrders: 0,
+    totalRevenue: 0,
+    todayRevenue: 0,
+    avgRating: 0,
+    vipGuests: 0
   });
+  const [orders, setOrders] = useState<any[]>([]);
+  const [orderItemsByOrder, setOrderItemsByOrder] = useState<Record<string, any[]>>({});
   const [newMenuItem, setNewMenuItem] = useState({
     name: '',
     description: '',
@@ -60,9 +62,15 @@ export default function RestaurantDashboard() {
     if (user) {
       fetchRestaurant();
       fetchMenuItems();
-      fetchStats();
+      fetchOrders();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (orders.length > 0 || menuItems.length > 0) {
+      calculateStats();
+    }
+  }, [orders, menuItems]);
 
   const fetchRestaurant = async () => {
     try {
@@ -128,16 +136,82 @@ export default function RestaurantDashboard() {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchOrders = async () => {
+    try {
+      const { data: sellerData } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (sellerData) {
+        const { data: restaurantData } = await supabase
+          .from('restaurants')
+          .select('id')
+          .eq('seller_id', sellerData.id)
+          .single();
+
+        if (restaurantData) {
+          const { data: ordersData } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('restaurant_id', restaurantData.id)
+            .order('created_at', { ascending: false });
+          
+          if (ordersData) {
+            setOrders(ordersData);
+            
+            // Setup real-time subscription
+            const channel = supabase
+              .channel('restaurant-orders')
+              .on(
+                'postgres_changes',
+                {
+                  event: '*',
+                  schema: 'public',
+                  table: 'orders',
+                  filter: `restaurant_id=eq.${restaurantData.id}`
+                },
+                () => {
+                  fetchOrders();
+                }
+              )
+              .subscribe();
+
+            return () => {
+              supabase.removeChannel(channel);
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  const calculateStats = () => {
+    const pending = orders.filter(o => o.status === 'pending').length;
+    const preparing = orders.filter(o => o.status === 'confirmed').length;
+    const delivered = orders.filter(o => o.status === 'delivered').length;
+    
+    const totalRev = orders
+      .filter(o => o.payment_status === 'paid')
+      .reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+    
+    const today = new Date().toISOString().split('T')[0];
+    const todayRev = orders
+      .filter(o => o.created_at?.startsWith(today) && o.payment_status === 'paid')
+      .reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+    
     setStats({
       totalMenuItems: menuItems.length,
-      pendingOrders: 8,
-      preparingOrders: 5,
-      deliveredOrders: 142,
-      totalRevenue: 285000,
-      todayRevenue: 12500,
-      avgRating: 4.8,
-      vipGuests: 12
+      pendingOrders: pending,
+      preparingOrders: preparing,
+      deliveredOrders: delivered,
+      totalRevenue: totalRev,
+      todayRevenue: todayRev,
+      avgRating: 4.5,
+      vipGuests: 0
     });
   };
 
@@ -417,44 +491,74 @@ export default function RestaurantDashboard() {
               <CardTitle className="text-white">Live Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {[
-                  { id: 'ORD-001', customer: 'John Doe', table: '12', status: 'pending', items: 'Pasta Carbonara, Caesar Salad', time: '5 min ago' },
-                  { id: 'ORD-002', customer: 'Jane Smith', table: 'Room 305', status: 'preparing', items: 'Grilled Salmon, Wine', time: '12 min ago' },
-                  { id: 'ORD-003', customer: 'Mike Johnson', table: '8', status: 'ready', items: 'Steak, Mashed Potatoes', time: '18 min ago' },
-                ].map((order) => (
-                  <div key={order.id} className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <p className="font-semibold text-white">{order.id}</p>
-                          <Badge className={
-                            order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                            order.status === 'preparing' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                            'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          }>
-                            {order.status === 'pending' && <Clock3 className="h-3 w-3 mr-1" />}
-                            {order.status === 'preparing' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                            {order.status === 'ready' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                            {order.status}
-                          </Badge>
+              {orders.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingBag className="h-12 w-12 text-white/30 mx-auto mb-4" />
+                  <p className="text-white/60">No orders yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div key={order.id} className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-3">
+                            <p className="font-semibold text-white text-xs">#{order.id.slice(0, 8)}</p>
+                            <Badge className={
+                              order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                              order.status === 'confirmed' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                              order.status === 'shipped' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
+                              order.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                              'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                            }>
+                              {order.status === 'pending' && <Clock3 className="h-3 w-3 mr-1" />}
+                              {order.status === 'confirmed' && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                              {order.status === 'shipped' && <Package className="h-3 w-3 mr-1" />}
+                              {order.status === 'delivered' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                              {order.status}
+                            </Badge>
+                          </div>
+                          <p className="text-white/80 text-sm">
+                            {order.delivery_address || 'Pickup'}
+                          </p>
+                          <p className="text-sm text-white/60">
+                            {order.order_items?.length || 0} items • KES {order.total_amount}
+                          </p>
+                          <p className="text-xs text-white/50">
+                            {new Date(order.created_at).toLocaleString()}
+                          </p>
                         </div>
-                        <p className="text-white/80">{order.customer} - Table/Room: {order.table}</p>
-                        <p className="text-sm text-white/60">{order.items}</p>
-                        <p className="text-xs text-white/50">{order.time}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10">
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          {order.status === 'pending' && (
+                            <Button 
+                              size="sm" 
+                              className="bg-blue-500 hover:bg-blue-600 text-white"
+                              onClick={async () => {
+                                await supabase.from('orders').update({ status: 'confirmed' }).eq('id', order.id);
+                                toast({ title: "Order accepted", description: "Order is now being prepared" });
+                              }}
+                            >
+                              Accept
+                            </Button>
+                          )}
+                          {order.status === 'confirmed' && (
+                            <Button 
+                              size="sm" 
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                              onClick={async () => {
+                                await supabase.from('orders').update({ status: 'shipped' }).eq('id', order.id);
+                                toast({ title: "Order ready", description: "Order marked as ready for delivery" });
+                              }}
+                            >
+                              Ready
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -598,6 +702,99 @@ export default function RestaurantDashboard() {
           </div>
         );
 
+      case 'customers':
+        return (
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white">Customer Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-white/60 text-center py-8">Customer data will appear here as orders are placed</p>
+            </CardContent>
+          </Card>
+        );
+
+      case 'chat':
+        return (
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white">Chat & Messages</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-white/60 text-center py-8">Real-time chat with customers will be available here</p>
+            </CardContent>
+          </Card>
+        );
+
+      case 'staff':
+        return (
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white">Staff Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-white/60 text-center py-8">Add and manage your restaurant staff here</p>
+            </CardContent>
+          </Card>
+        );
+
+      case 'tables':
+        return (
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white">Tables & Reservations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-white/60 text-center py-8">Manage table reservations and seating arrangements</p>
+            </CardContent>
+          </Card>
+        );
+
+      case 'billing':
+        return (
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white">Billing & Payments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-white/60">Total Revenue: KES {stats.totalRevenue.toLocaleString()}</p>
+                <p className="text-white/60">Today's Revenue: KES {stats.todayRevenue.toLocaleString()}</p>
+                <p className="text-white/60">Pending Payments: {orders.filter(o => o.payment_status === 'pending').length}</p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'analytics':
+        return (
+          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-white">Analytics & Reports</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <p className="text-white/60 text-sm">Total Orders</p>
+                  <p className="text-2xl font-bold text-white">{orders.length}</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <p className="text-white/60 text-sm">Total Revenue</p>
+                  <p className="text-2xl font-bold text-white">KES {stats.totalRevenue.toLocaleString()}</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <p className="text-white/60 text-sm">Menu Items</p>
+                  <p className="text-2xl font-bold text-white">{stats.totalMenuItems}</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-lg">
+                  <p className="text-white/60 text-sm">Avg Rating</p>
+                  <p className="text-2xl font-bold text-white">{stats.avgRating}/5</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
       default:
         return (
           <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
@@ -688,12 +885,26 @@ export default function RestaurantDashboard() {
               <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
             </Button>
 
+            <Button
+              onClick={() => navigate('/')}
+              variant="ghost"
+              className="text-white hover:bg-white/10"
+            >
+              <Home className="h-5 w-5 mr-2" />
+              Home
+            </Button>
+
             <div className="flex items-center gap-3 pl-3 border-l border-white/20">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-white">Manager</p>
                 <p className="text-xs text-white/60">{user?.email}</p>
               </div>
-              <Button size="icon" variant="ghost" className="text-white hover:bg-white/10">
+              <Button 
+                onClick={() => signOut()} 
+                size="icon" 
+                variant="ghost" 
+                className="text-white hover:bg-white/10"
+              >
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
