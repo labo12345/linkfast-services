@@ -51,7 +51,42 @@ export default function Taxi() {
     if (user) {
       checkActiveRide();
     }
+    subscribeToRideUpdates();
   }, [user]);
+
+  const subscribeToRideUpdates = () => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('rides-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rides',
+          filter: `customer_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Ride updated:', payload);
+          if (payload.new && typeof payload.new === 'object' && 'status' in payload.new) {
+            setActiveRide(payload.new);
+            
+            if (payload.new.status === 'accepted') {
+              toast({
+                title: "Driver Accepted!",
+                description: "Your driver is on the way",
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const checkActiveRide = async () => {
     if (!user) return;

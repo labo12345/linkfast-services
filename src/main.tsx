@@ -6,6 +6,8 @@ import { queryClient } from "./lib/queryClient";
 import { AuthProvider } from "./hooks/useAuth";
 import { StrictMode, useEffect } from "react";
 import { subscribeRealtime } from "./lib/realtime";
+import { requestNotificationPermission, setupNotificationListener } from "./lib/notifications";
+import { useAuth } from "./hooks/useAuth";
 
 // Register service worker for push notifications
 if ("serviceWorker" in navigator) {
@@ -17,9 +19,17 @@ if ("serviceWorker" in navigator) {
 }
 
 function RootApp() {
+  const { user } = useAuth();
+
   useEffect(() => {
     subscribeRealtime();
-  }, []);
+    
+    if (user) {
+      requestNotificationPermission();
+      const unsubscribe = setupNotificationListener(user.id);
+      return unsubscribe;
+    }
+  }, [user]);
 
   return <App />;
 }

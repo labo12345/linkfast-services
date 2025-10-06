@@ -28,9 +28,11 @@ interface CartItem {
   price: number;
   quantity: number;
   restaurant?: {
+    id?: string;
     name: string;
     delivery_fee: number;
   };
+  restaurant_id?: string;
 }
 
 interface CartModalProps {
@@ -67,7 +69,16 @@ export default function CartModal({
     }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to place an order",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (selectedPayment === 'mpesa') {
       setShowMpesaModal(true);
       return;
@@ -75,31 +86,120 @@ export default function CartModal({
 
     setLoading(true);
     
-    // Simulate order processing for other payment methods
-    setTimeout(() => {
+    try {
+      // Create order in database
+      const restaurantId = cart[0]?.restaurant?.id || cart[0]?.restaurant_id;
+      
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([
+          {
+            customer_id: user.id,
+            restaurant_id: restaurantId,
+            order_type: 'food',
+            total_amount: total,
+            delivery_fee: deliveryFee,
+            payment_method: selectedPayment as 'cash' | 'mpesa' | 'stripe' | 'wallet',
+            payment_status: selectedPayment === 'cash' ? 'pending' : 'paid',
+            status: 'pending',
+          }
+        ])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = cart.map(item => ({
+        order_id: orderData.id,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
       toast({
         title: "Order placed!",
-        description: "Your order has been placed successfully. You'll receive a confirmation shortly.",
+        description: "Your order has been placed successfully. Track it in your orders.",
       });
       
-      // Clear cart and close modal
       clearCart();
       onClose();
+    } catch (error) {
+      console.error('Order creation error:', error);
+      toast({
+        title: "Order failed",
+        description: "Failed to place order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
-  const handleMpesaPaymentComplete = (transactionId: string) => {
-    // Process successful M-Pesa payment
-    toast({
-      title: "Payment successful!",
-      description: `Order confirmed. Transaction ID: ${transactionId}`,
-    });
-    
-    // Clear cart and close modals
-    clearCart();
-    setShowMpesaModal(false);
-    onClose();
+  const handleMpesaPaymentComplete = async (transactionId: string) => {
+    try {
+      const restaurantId = cart[0]?.restaurant?.id || cart[0]?.restaurant_id;
+      
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([
+          {
+            customer_id: user?.id,
+            restaurant_id: restaurantId,
+            order_type: 'food',
+            total_amount: total,
+            delivery_fee: deliveryFee,
+            payment_method: 'mpesa' as const,
+            payment_status: 'paid',
+            status: 'pending',
+          }
+        ])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      const orderItems = cart.map(item => ({
+        order_id: orderData.id,
+        menu_item_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price
+      }));
+
+      await supabase.from('order_items').insert(orderItems);
+
+      // Record transaction
+      await supabase.from('transactions').insert([{
+        user_id: user?.id,
+        order_id: orderData.id,
+        amount: total,
+        provider: 'mpesa',
+        status: 'completed',
+        external_reference: transactionId
+      }]);
+
+      toast({
+        title: "Payment successful!",
+        description: `Order confirmed. Transaction ID: ${transactionId}`,
+      });
+      
+      clearCart();
+      setShowMpesaModal(false);
+      onClose();
+    } catch (error) {
+      console.error('M-Pesa order error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete order",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

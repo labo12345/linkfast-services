@@ -51,7 +51,26 @@ export default function Properties() {
 
   useEffect(() => {
     fetchProperties();
+    subscribeToPropertyUpdates();
   }, []);
+
+  const subscribeToPropertyUpdates = () => {
+    const channel = supabase
+      .channel('properties-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'properties' },
+        (payload) => {
+          console.log('Property updated:', payload);
+          fetchProperties();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const fetchProperties = async () => {
     try {

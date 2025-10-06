@@ -53,7 +53,26 @@ export default function Food() {
 
   useEffect(() => {
     fetchMenuItems();
+    subscribeToMenuUpdates();
   }, []);
+
+  const subscribeToMenuUpdates = () => {
+    const channel = supabase
+      .channel('menu-items-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items' },
+        (payload) => {
+          console.log('Menu item updated:', payload);
+          fetchMenuItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const fetchMenuItems = async () => {
     try {

@@ -67,7 +67,31 @@ export default function Admin() {
     
     // If admin, load all data
     fetchAllData();
+    subscribeToAdminUpdates();
   }, [user, isAdmin, adminLoading, navigate]);
+
+  const subscribeToAdminUpdates = () => {
+    // Subscribe to driver changes
+    const driversChannel = supabase
+      .channel('admin-drivers')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => {
+        fetchAllData();
+      })
+      .subscribe();
+
+    // Subscribe to product changes
+    const productsChannel = supabase
+      .channel('admin-products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        fetchAllData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(driversChannel);
+      supabase.removeChannel(productsChannel);
+    };
+  };
 
   const fetchAllData = async () => {
     try {
