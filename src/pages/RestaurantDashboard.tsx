@@ -74,6 +74,12 @@ export default function RestaurantDashboard() {
   const [chatMessage, setChatMessage] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [showStaffDialog, setShowStaffDialog] = useState(false);
+  const [editingTable, setEditingTable] = useState<any>(null);
+  const [editingReservation, setEditingReservation] = useState<any>(null);
+  const [editingStaff, setEditingStaff] = useState<any>(null);
+  const [newStaff, setNewStaff] = useState({ name: '', role: '', phone: '', email: '', shift: '' });
 
   useEffect(() => {
     if (user) {
@@ -83,8 +89,15 @@ export default function RestaurantDashboard() {
       fetchTables();
       fetchReservations();
       fetchCustomers();
+      fetchStaff();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (restaurantId) {
+      setupRealtimeSubscriptions();
+    }
+  }, [restaurantId]);
 
   useEffect(() => {
     if (restaurantId && selectedCustomer) {
@@ -374,14 +387,14 @@ export default function RestaurantDashboard() {
   const fetchTables = async () => {
     if (!restaurantId) return;
     try {
-      const result: any = await supabase.from('tables' as any).select('*').eq('restaurant_id', restaurantId);
+      const result: any = await supabase.from('tables' as any).select('*').eq('restaurant_id', restaurantId).order('number');
       if (result.data) setTables(result.data);
     } catch (error) {
       console.error('Error fetching tables:', error);
     }
   };
 
-  const addTable = async () => {
+  const addOrUpdateTable = async () => {
     if (!restaurantId) return;
     try {
       const tableData = {
@@ -391,13 +404,43 @@ export default function RestaurantDashboard() {
         status: newTable.status,
         restaurant_id: restaurantId
       };
-      await supabase.from('tables' as any).insert(tableData);
-      toast({ title: "Table added" });
+      
+      if (editingTable) {
+        await supabase.from('tables' as any).update(tableData).eq('id', editingTable.id);
+        toast({ title: "Table updated successfully" });
+        setEditingTable(null);
+      } else {
+        await supabase.from('tables' as any).insert(tableData);
+        toast({ title: "Table added successfully" });
+      }
+      
       setNewTable({ number: '', capacity: '', location: '', status: 'available' });
       setShowTableDialog(false);
       fetchTables();
     } catch (error) {
-      console.error('Error adding table:', error);
+      console.error('Error saving table:', error);
+      toast({ title: "Error", description: "Failed to save table", variant: "destructive" });
+    }
+  };
+
+  const deleteTable = async (id: string) => {
+    try {
+      await supabase.from('tables' as any).delete().eq('id', id);
+      toast({ title: "Table deleted successfully" });
+      fetchTables();
+    } catch (error) {
+      console.error('Error deleting table:', error);
+      toast({ title: "Error", description: "Failed to delete table", variant: "destructive" });
+    }
+  };
+
+  const updateTableStatus = async (id: string, status: string) => {
+    try {
+      await supabase.from('tables' as any).update({ status }).eq('id', id);
+      toast({ title: "Table status updated" });
+      fetchTables();
+    } catch (error) {
+      console.error('Error updating table status:', error);
     }
   };
 
@@ -408,14 +451,15 @@ export default function RestaurantDashboard() {
         .from('reservations' as any)
         .select('*, tables(number)')
         .eq('restaurant_id', restaurantId)
-        .order('date', { ascending: true });
+        .order('date', { ascending: true })
+        .order('time', { ascending: true });
       if (result.data) setReservations(result.data);
     } catch (error) {
       console.error('Error fetching reservations:', error);
     }
   };
 
-  const addReservation = async () => {
+  const addOrUpdateReservation = async () => {
     if (!restaurantId) return;
     try {
       const reservationData = {
@@ -425,17 +469,47 @@ export default function RestaurantDashboard() {
         date: newReservation.date,
         time: newReservation.time,
         guests: parseInt(newReservation.guests),
-        table_id: newReservation.table_id,
+        table_id: newReservation.table_id || null,
         notes: newReservation.notes,
         restaurant_id: restaurantId
       };
-      await supabase.from('reservations' as any).insert(reservationData);
-      toast({ title: "Reservation added" });
+      
+      if (editingReservation) {
+        await supabase.from('reservations' as any).update(reservationData).eq('id', editingReservation.id);
+        toast({ title: "Reservation updated successfully" });
+        setEditingReservation(null);
+      } else {
+        await supabase.from('reservations' as any).insert(reservationData);
+        toast({ title: "Reservation created successfully" });
+      }
+      
       setNewReservation({ customer_name: '', customer_email: '', customer_phone: '', date: '', time: '', guests: '', table_id: '', notes: '' });
       setShowReservationDialog(false);
       fetchReservations();
     } catch (error) {
-      console.error('Error adding reservation:', error);
+      console.error('Error saving reservation:', error);
+      toast({ title: "Error", description: "Failed to save reservation", variant: "destructive" });
+    }
+  };
+
+  const deleteReservation = async (id: string) => {
+    try {
+      await supabase.from('reservations' as any).delete().eq('id', id);
+      toast({ title: "Reservation deleted successfully" });
+      fetchReservations();
+    } catch (error) {
+      console.error('Error deleting reservation:', error);
+      toast({ title: "Error", description: "Failed to delete reservation", variant: "destructive" });
+    }
+  };
+
+  const updateReservationStatus = async (id: string, status: string) => {
+    try {
+      await supabase.from('reservations' as any).update({ status }).eq('id', id);
+      toast({ title: `Reservation ${status}` });
+      fetchReservations();
+    } catch (error) {
+      console.error('Error updating reservation status:', error);
     }
   };
 
@@ -502,6 +576,87 @@ export default function RestaurantDashboard() {
     } catch (error) {
       console.error('Error sending message:', error);
     }
+  };
+
+  const fetchStaff = async () => {
+    if (!restaurantId) return;
+    try {
+      // Store staff in a JSON column in restaurant settings or create custom table
+      const { data } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', restaurantId)
+        .maybeSingle();
+      
+      // For now, using localStorage as temporary storage
+      const storedStaff = localStorage.getItem(`restaurant_staff_${restaurantId}`);
+      if (storedStaff) {
+        setStaff(JSON.parse(storedStaff));
+      }
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+    }
+  };
+
+  const saveStaffToStorage = (staffList: any[]) => {
+    if (restaurantId) {
+      localStorage.setItem(`restaurant_staff_${restaurantId}`, JSON.stringify(staffList));
+      setStaff(staffList);
+    }
+  };
+
+  const addOrUpdateStaff = async () => {
+    try {
+      const staffData = {
+        id: editingStaff?.id || Date.now().toString(),
+        ...newStaff,
+        created_at: editingStaff?.created_at || new Date().toISOString()
+      };
+      
+      let updatedStaff;
+      if (editingStaff) {
+        updatedStaff = staff.map(s => s.id === editingStaff.id ? staffData : s);
+        toast({ title: "Staff member updated successfully" });
+        setEditingStaff(null);
+      } else {
+        updatedStaff = [...staff, staffData];
+        toast({ title: "Staff member added successfully" });
+      }
+      
+      saveStaffToStorage(updatedStaff);
+      setNewStaff({ name: '', role: '', phone: '', email: '', shift: '' });
+      setShowStaffDialog(false);
+    } catch (error) {
+      console.error('Error saving staff:', error);
+      toast({ title: "Error", description: "Failed to save staff member", variant: "destructive" });
+    }
+  };
+
+  const deleteStaff = async (id: string) => {
+    try {
+      const updatedStaff = staff.filter(s => s.id !== id);
+      saveStaffToStorage(updatedStaff);
+      toast({ title: "Staff member removed successfully" });
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+    }
+  };
+
+  const setupRealtimeSubscriptions = () => {
+    const tablesChannel = supabase
+      .channel('restaurant-tables')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables', filter: `restaurant_id=eq.${restaurantId}` }, () => fetchTables())
+      .subscribe();
+
+    const reservationsChannel = supabase
+      .channel('restaurant-reservations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => fetchReservations())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(tablesChannel);
+      supabase.removeChannel(reservationsChannel);
+    };
   };
 
   if (!user) return null;
@@ -978,10 +1133,85 @@ export default function RestaurantDashboard() {
         return (
           <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
             <CardHeader>
-              <CardTitle className="text-white">Staff Management</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white">Staff Management</CardTitle>
+                <Dialog open={showStaffDialog} onOpenChange={setShowStaffDialog}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => { setEditingStaff(null); setNewStaff({ name: '', role: '', phone: '', email: '', shift: '' }); }} className="bg-gradient-to-r from-amber-500 to-orange-500">
+                      <Plus className="h-4 w-4 mr-2" /> Add Staff
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 text-white border-white/20">
+                    <DialogHeader>
+                      <DialogTitle>{editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div><Label>Full Name</Label><Input value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                      <div>
+                        <Label>Role</Label>
+                        <select value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })} className="w-full p-2 rounded bg-white/10 border border-white/20 text-white">
+                          <option value="">Select role</option>
+                          <option value="Chef">Chef</option>
+                          <option value="Sous Chef">Sous Chef</option>
+                          <option value="Waiter">Waiter</option>
+                          <option value="Bartender">Bartender</option>
+                          <option value="Host">Host</option>
+                          <option value="Manager">Manager</option>
+                          <option value="Kitchen Staff">Kitchen Staff</option>
+                        </select>
+                      </div>
+                      <div><Label>Phone</Label><Input value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                      <div><Label>Email</Label><Input type="email" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                      <div>
+                        <Label>Shift</Label>
+                        <select value={newStaff.shift} onChange={(e) => setNewStaff({ ...newStaff, shift: e.target.value })} className="w-full p-2 rounded bg-white/10 border border-white/20 text-white">
+                          <option value="">Select shift</option>
+                          <option value="Morning">Morning (6 AM - 2 PM)</option>
+                          <option value="Afternoon">Afternoon (2 PM - 10 PM)</option>
+                          <option value="Night">Night (10 PM - 6 AM)</option>
+                          <option value="Full Day">Full Day</option>
+                        </select>
+                      </div>
+                      <Button onClick={addOrUpdateStaff} disabled={loading} className="w-full bg-amber-500">
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingStaff ? 'Update Staff' : 'Add Staff')}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-white/60 text-center py-8">Add and manage your restaurant staff here</p>
+              {staff.length === 0 ? (
+                <p className="text-white/60 text-center py-8">No staff members added yet</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {staff.map((member: any) => (
+                    <Card key={member.id} className="bg-white/5 border-white/10">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-semibold text-white text-lg">{member.name}</p>
+                            <Badge className="bg-amber-500/20 text-amber-400 mt-1">{member.role}</Badge>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => { setEditingStaff(member); setNewStaff({ name: member.name, role: member.role, phone: member.phone, email: member.email, shift: member.shift }); setShowStaffDialog(true); }} className="bg-white/5 border-white/20 text-white hover:bg-white/10">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => deleteStaff(member.id)} className="bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="space-y-1 text-sm text-white/60">
+                          <p>📞 {member.phone}</p>
+                          <p>✉️ {member.email}</p>
+                          <p>🕐 {member.shift}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -995,19 +1225,21 @@ export default function RestaurantDashboard() {
                   <CardTitle className="text-white">Tables</CardTitle>
                   <Dialog open={showTableDialog} onOpenChange={setShowTableDialog}>
                     <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-amber-500 to-orange-500">
+                      <Button onClick={() => { setEditingTable(null); setNewTable({ number: '', capacity: '', location: '', status: 'available' }); }} className="bg-gradient-to-r from-amber-500 to-orange-500">
                         <Plus className="h-4 w-4 mr-2" /> Add Table
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-gray-900 text-white border-white/20">
                       <DialogHeader>
-                        <DialogTitle>Add New Table</DialogTitle>
+                        <DialogTitle>{editingTable ? 'Edit Table' : 'Add New Table'}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div><Label>Table Number</Label><Input value={newTable.number} onChange={(e) => setNewTable({ ...newTable, number: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                         <div><Label>Capacity</Label><Input type="number" value={newTable.capacity} onChange={(e) => setNewTable({ ...newTable, capacity: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                         <div><Label>Location</Label><Input value={newTable.location} onChange={(e) => setNewTable({ ...newTable, location: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
-                        <Button onClick={addTable} className="w-full bg-amber-500">Add Table</Button>
+                        <Button onClick={addOrUpdateTable} disabled={loading} className="w-full bg-amber-500">
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingTable ? 'Update Table' : 'Add Table')}
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -1020,12 +1252,27 @@ export default function RestaurantDashboard() {
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-2">
                           <p className="font-semibold text-white">Table {table.number}</p>
-                          <Badge className={table.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
+                          <Badge className={table.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : table.status === 'occupied' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}>
                             {table.status}
                           </Badge>
                         </div>
                         <p className="text-sm text-white/60">Capacity: {table.capacity}</p>
                         <p className="text-sm text-white/60">{table.location}</p>
+                        <div className="flex gap-2 mt-3">
+                          <Button size="sm" variant="outline" onClick={() => { setEditingTable(table); setNewTable({ number: table.number, capacity: table.capacity.toString(), location: table.location, status: table.status }); setShowTableDialog(true); }} className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10">
+                            <Edit className="h-3 w-3 mr-1" /> Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => deleteTable(table.id)} className="flex-1 bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30">
+                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                          </Button>
+                        </div>
+                        <div className="mt-2">
+                          <select value={table.status} onChange={(e) => updateTableStatus(table.id, e.target.value)} className="w-full p-2 rounded bg-white/10 border border-white/20 text-white text-sm">
+                            <option value="available">Available</option>
+                            <option value="occupied">Occupied</option>
+                            <option value="reserved">Reserved</option>
+                          </select>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -1039,13 +1286,13 @@ export default function RestaurantDashboard() {
                   <CardTitle className="text-white">Reservations</CardTitle>
                   <Dialog open={showReservationDialog} onOpenChange={setShowReservationDialog}>
                     <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-amber-500 to-orange-500">
+                      <Button onClick={() => { setEditingReservation(null); setNewReservation({ customer_name: '', customer_email: '', customer_phone: '', date: '', time: '', guests: '', table_id: '', notes: '' }); }} className="bg-gradient-to-r from-amber-500 to-orange-500">
                         <Plus className="h-4 w-4 mr-2" /> Add Reservation
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-gray-900 text-white border-white/20 max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>New Reservation</DialogTitle>
+                        <DialogTitle>{editingReservation ? 'Edit Reservation' : 'New Reservation'}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div><Label>Customer Name</Label><Input value={newReservation.customer_name} onChange={(e) => setNewReservation({ ...newReservation, customer_name: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
@@ -1056,8 +1303,19 @@ export default function RestaurantDashboard() {
                           <div><Label>Time</Label><Input type="time" value={newReservation.time} onChange={(e) => setNewReservation({ ...newReservation, time: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
                         </div>
                         <div><Label>Number of Guests</Label><Input type="number" value={newReservation.guests} onChange={(e) => setNewReservation({ ...newReservation, guests: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div>
+                          <Label>Assign Table (Optional)</Label>
+                          <select value={newReservation.table_id} onChange={(e) => setNewReservation({ ...newReservation, table_id: e.target.value })} className="w-full p-2 rounded bg-white/10 border border-white/20 text-white">
+                            <option value="">Select a table</option>
+                            {tables.filter(t => t.status === 'available').map((t: any) => (
+                              <option key={t.id} value={t.id}>Table {t.number} (Capacity: {t.capacity})</option>
+                            ))}
+                          </select>
+                        </div>
                         <div><Label>Notes</Label><Textarea value={newReservation.notes} onChange={(e) => setNewReservation({ ...newReservation, notes: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
-                        <Button onClick={addReservation} className="w-full bg-amber-500">Create Reservation</Button>
+                        <Button onClick={addOrUpdateReservation} disabled={loading} className="w-full bg-amber-500">
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingReservation ? 'Update Reservation' : 'Create Reservation')}
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -1071,13 +1329,30 @@ export default function RestaurantDashboard() {
                     {reservations.map((res: any) => (
                       <div key={res.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
                         <div className="flex items-start justify-between">
-                          <div>
+                          <div className="flex-1">
                             <p className="font-semibold text-white">{res.customer_name}</p>
                             <p className="text-sm text-white/60">{res.customer_email} • {res.customer_phone}</p>
                             <p className="text-sm text-white/70 mt-1">{res.date} at {res.time} • {res.guests} guests</p>
-                            {res.notes && <p className="text-xs text-white/50 mt-1">{res.notes}</p>}
+                            {res.notes && <p className="text-xs text-white/50 mt-1">Note: {res.notes}</p>}
                           </div>
-                          <Badge className="bg-blue-500/20 text-blue-400">{res.status}</Badge>
+                          <div className="flex flex-col gap-2">
+                            <Badge className={res.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400' : res.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}>
+                              {res.status}
+                            </Badge>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="outline" onClick={() => { setEditingReservation(res); setNewReservation({ customer_name: res.customer_name, customer_email: res.customer_email, customer_phone: res.customer_phone, date: res.date, time: res.time, guests: res.guests.toString(), table_id: res.table_id || '', notes: res.notes || '' }); setShowReservationDialog(true); }} className="bg-white/5 border-white/20 text-white hover:bg-white/10">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => deleteReservation(res.id)} className="bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            {res.status === 'pending' && (
+                              <Button size="sm" onClick={() => updateReservationStatus(res.id, 'confirmed')} className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                                Confirm
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
