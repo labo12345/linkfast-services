@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Utensils, Plus, Clock, TrendingUp, Star, ChefHat, DollarSign, Package,
   Home, ShoppingBag, Users, MessageSquare, UserCog, Calendar, CreditCard,
   BarChart3, Settings, Bell, Search, LogOut, Upload, Menu, X, Wine,
-  UtensilsCrossed, Clock3, CheckCircle2, XCircle, Loader2
+  UtensilsCrossed, Clock3, CheckCircle2, XCircle, Loader2, Edit, Trash2, Send
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -57,14 +58,40 @@ export default function RestaurantDashboard() {
     category_id: '',
     image_url: ''
   });
+  const [editingMenuItem, setEditingMenuItem] = useState<any>(null);
+  const [showMenuDialog, setShowMenuDialog] = useState(false);
+  const [tables, setTables] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [showTableDialog, setShowTableDialog] = useState(false);
+  const [showReservationDialog, setShowReservationDialog] = useState(false);
+  const [newTable, setNewTable] = useState({ number: '', capacity: '', location: '', status: 'available' });
+  const [newReservation, setNewReservation] = useState({
+    customer_name: '', customer_email: '', customer_phone: '',
+    date: '', time: '', guests: '', table_id: '', notes: ''
+  });
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatMessage, setChatMessage] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       fetchRestaurant();
       fetchMenuItems();
       fetchOrders();
+      fetchTables();
+      fetchReservations();
+      fetchCustomers();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (restaurantId && selectedCustomer) {
+      fetchChatMessages();
+      setupChatSubscription();
+    }
+  }, [restaurantId, selectedCustomer]);
 
   useEffect(() => {
     if (orders.length > 0 || menuItems.length > 0) {
@@ -88,6 +115,7 @@ export default function RestaurantDashboard() {
           .single();
         
         if (data) {
+          setRestaurantId(data.id);
           setRestaurant({
             name: data.name,
             description: data.description || '',
@@ -292,50 +320,188 @@ export default function RestaurantDashboard() {
   const addMenuItem = async () => {
     setLoading(true);
     try {
-      const { data: sellerData } = await supabase
-        .from('sellers')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
+      if (!restaurantId) return;
 
-      if (sellerData) {
-        const { data: restaurantData } = await supabase
-          .from('restaurants')
-          .select('id')
-          .eq('seller_id', sellerData.id)
-          .single();
+      if (editingMenuItem) {
+        const { error } = await supabase
+          .from('menu_items')
+          .update({
+            name: newMenuItem.name,
+            description: newMenuItem.description,
+            price: parseFloat(newMenuItem.price),
+            preparation_time: parseInt(newMenuItem.preparation_time),
+          })
+          .eq('id', editingMenuItem.id);
 
-        if (restaurantData) {
-          const { error } = await supabase
-            .from('menu_items')
-            .insert({
-              ...newMenuItem,
-              price: parseFloat(newMenuItem.price),
-              preparation_time: parseInt(newMenuItem.preparation_time),
-              restaurant_id: restaurantData.id
-            });
+        if (!error) {
+          toast({ title: "Menu item updated" });
+          setEditingMenuItem(null);
+        }
+      } else {
+        const { error } = await supabase
+          .from('menu_items')
+          .insert({
+            ...newMenuItem,
+            price: parseFloat(newMenuItem.price),
+            preparation_time: parseInt(newMenuItem.preparation_time),
+            restaurant_id: restaurantId
+          });
 
-          if (!error) {
-            toast({
-              title: "Menu item added",
-              description: "Your menu item has been added successfully"
-            });
-            setNewMenuItem({
-              name: '',
-              description: '',
-              price: '',
-              preparation_time: '15',
-              category_id: '',
-              image_url: ''
-            });
-            fetchMenuItems();
-          }
+        if (!error) {
+          toast({ title: "Menu item added" });
         }
       }
+      
+      setNewMenuItem({ name: '', description: '', price: '', preparation_time: '15', category_id: '', image_url: '' });
+      setShowMenuDialog(false);
+      fetchMenuItems();
     } catch (error) {
-      console.error('Error adding menu item:', error);
+      console.error('Error saving menu item:', error);
     }
     setLoading(false);
+  };
+
+  const deleteMenuItem = async (id: string) => {
+    try {
+      await supabase.from('menu_items').delete().eq('id', id);
+      toast({ title: "Menu item deleted" });
+      fetchMenuItems();
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+    }
+  };
+
+  const fetchTables = async () => {
+    if (!restaurantId) return;
+    try {
+      const result: any = await supabase.from('tables' as any).select('*').eq('restaurant_id', restaurantId);
+      if (result.data) setTables(result.data);
+    } catch (error) {
+      console.error('Error fetching tables:', error);
+    }
+  };
+
+  const addTable = async () => {
+    if (!restaurantId) return;
+    try {
+      const tableData = {
+        number: newTable.number,
+        capacity: parseInt(newTable.capacity),
+        location: newTable.location,
+        status: newTable.status,
+        restaurant_id: restaurantId
+      };
+      await supabase.from('tables' as any).insert(tableData);
+      toast({ title: "Table added" });
+      setNewTable({ number: '', capacity: '', location: '', status: 'available' });
+      setShowTableDialog(false);
+      fetchTables();
+    } catch (error) {
+      console.error('Error adding table:', error);
+    }
+  };
+
+  const fetchReservations = async () => {
+    if (!restaurantId) return;
+    try {
+      const result: any = await supabase
+        .from('reservations' as any)
+        .select('*, tables(number)')
+        .eq('restaurant_id', restaurantId)
+        .order('date', { ascending: true });
+      if (result.data) setReservations(result.data);
+    } catch (error) {
+      console.error('Error fetching reservations:', error);
+    }
+  };
+
+  const addReservation = async () => {
+    if (!restaurantId) return;
+    try {
+      const reservationData = {
+        customer_name: newReservation.customer_name,
+        customer_email: newReservation.customer_email,
+        customer_phone: newReservation.customer_phone,
+        date: newReservation.date,
+        time: newReservation.time,
+        guests: parseInt(newReservation.guests),
+        table_id: newReservation.table_id,
+        notes: newReservation.notes,
+        restaurant_id: restaurantId
+      };
+      await supabase.from('reservations' as any).insert(reservationData);
+      toast({ title: "Reservation added" });
+      setNewReservation({ customer_name: '', customer_email: '', customer_phone: '', date: '', time: '', guests: '', table_id: '', notes: '' });
+      setShowReservationDialog(false);
+      fetchReservations();
+    } catch (error) {
+      console.error('Error adding reservation:', error);
+    }
+  };
+
+  const fetchCustomers = async () => {
+    if (!restaurantId) return;
+    try {
+      const { data } = await supabase
+        .from('orders')
+        .select('customer_id, users(full_name, phone, avatar_url)')
+        .eq('restaurant_id', restaurantId);
+      
+      if (data) {
+        const uniqueCustomers = Array.from(
+          new Map(data.map(item => [item.customer_id, { id: item.customer_id, ...item.users }])).values()
+        );
+        setCustomers(uniqueCustomers);
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    }
+  };
+
+  const fetchChatMessages = async () => {
+    if (!selectedCustomer) return;
+    try {
+      const { data } = await supabase
+        .from('chats')
+        .select('*')
+        .or(`sender_id.eq.${selectedCustomer.id},receiver_id.eq.${selectedCustomer.id}`)
+        .order('created_at', { ascending: true });
+      
+      if (data) setChatMessages(data);
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+    }
+  };
+
+  const setupChatSubscription = () => {
+    const channel = supabase
+      .channel('restaurant-chats')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chats' },
+        (payload) => {
+          if (payload.new.sender_id === selectedCustomer?.id || payload.new.receiver_id === selectedCustomer?.id) {
+            setChatMessages(prev => [...prev, payload.new]);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => { supabase.removeChannel(channel); };
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatMessage.trim() || !selectedCustomer) return;
+    try {
+      await supabase.from('chats').insert({
+        sender_id: user?.id,
+        receiver_id: selectedCustomer.id,
+        message: chatMessage
+      });
+      setChatMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   if (!user) return null;
@@ -570,10 +736,42 @@ export default function RestaurantDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-white">Menu Management</CardTitle>
-                  <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Dish
-                  </Button>
+                  <Dialog open={showMenuDialog} onOpenChange={setShowMenuDialog}>
+                    <DialogTrigger asChild>
+                      <Button onClick={() => { setEditingMenuItem(null); setNewMenuItem({ name: '', description: '', price: '', preparation_time: '15', category_id: '', image_url: '' }); }} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Dish
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-gray-900 text-white border-white/20">
+                      <DialogHeader>
+                        <DialogTitle>{editingMenuItem ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Name</Label>
+                          <Input value={newMenuItem.name} onChange={(e) => setNewMenuItem({ ...newMenuItem, name: e.target.value })} className="bg-white/10 border-white/20 text-white" />
+                        </div>
+                        <div>
+                          <Label>Description</Label>
+                          <Textarea value={newMenuItem.description} onChange={(e) => setNewMenuItem({ ...newMenuItem, description: e.target.value })} className="bg-white/10 border-white/20 text-white" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Price (KES)</Label>
+                            <Input type="number" value={newMenuItem.price} onChange={(e) => setNewMenuItem({ ...newMenuItem, price: e.target.value })} className="bg-white/10 border-white/20 text-white" />
+                          </div>
+                          <div>
+                            <Label>Prep Time (min)</Label>
+                            <Input type="number" value={newMenuItem.preparation_time} onChange={(e) => setNewMenuItem({ ...newMenuItem, preparation_time: e.target.value })} className="bg-white/10 border-white/20 text-white" />
+                          </div>
+                        </div>
+                        <Button onClick={addMenuItem} disabled={loading} className="w-full bg-amber-500 hover:bg-amber-600">
+                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingMenuItem ? 'Update' : 'Add')}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardHeader>
               <CardContent>
@@ -590,11 +788,19 @@ export default function RestaurantDashboard() {
                       <CardContent className="p-4">
                         <h3 className="font-semibold text-white mb-2">{item.name}</h3>
                         <p className="text-sm text-white/60 mb-3 line-clamp-2">{item.description}</p>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-3">
                           <p className="text-lg font-bold text-amber-400">KES {item.price}</p>
                           <Badge className={item.is_available ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
                             {item.is_available ? 'Available' : 'Out of Stock'}
                           </Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setEditingMenuItem(item); setNewMenuItem({ name: item.name, description: item.description, price: item.price.toString(), preparation_time: item.preparation_time?.toString() || '15', category_id: item.category_id || '', image_url: item.image_url || '' }); setShowMenuDialog(true); }} className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10">
+                            <Edit className="h-3 w-3 mr-1" /> Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => deleteMenuItem(item.id)} className="flex-1 bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30">
+                            <Trash2 className="h-3 w-3 mr-1" /> Delete
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -709,7 +915,28 @@ export default function RestaurantDashboard() {
               <CardTitle className="text-white">Customer Management</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-white/60 text-center py-8">Customer data will appear here as orders are placed</p>
+              {customers.length === 0 ? (
+                <p className="text-white/60 text-center py-8">No customers yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {customers.map((customer: any) => (
+                    <div key={customer.id} className="p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">{customer.full_name || 'Unknown'}</p>
+                          <p className="text-sm text-white/60">{customer.phone || 'No phone'}</p>
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={() => { setSelectedCustomer(customer); setCurrentView('chat'); }} className="bg-blue-500 hover:bg-blue-600">
+                        <MessageSquare className="h-4 w-4 mr-1" /> Chat
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -718,10 +945,31 @@ export default function RestaurantDashboard() {
         return (
           <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
             <CardHeader>
-              <CardTitle className="text-white">Chat & Messages</CardTitle>
+              <CardTitle className="text-white">Chat & Messages {selectedCustomer && `- ${selectedCustomer.full_name}`}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-white/60 text-center py-8">Real-time chat with customers will be available here</p>
+              {!selectedCustomer ? (
+                <p className="text-white/60 text-center py-8">Select a customer from the Customers section to start chatting</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="h-96 overflow-y-auto space-y-3 p-4 bg-white/5 rounded-lg">
+                    {chatMessages.map((msg: any) => (
+                      <div key={msg.id} className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-xs p-3 rounded-lg ${msg.sender_id === user?.id ? 'bg-amber-500 text-white' : 'bg-white/10 text-white'}`}>
+                          <p className="text-sm">{msg.message}</p>
+                          <p className="text-xs opacity-70 mt-1">{new Date(msg.created_at).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()} placeholder="Type a message..." className="bg-white/10 border-white/20 text-white" />
+                    <Button onClick={sendChatMessage} className="bg-amber-500 hover:bg-amber-600">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -740,14 +988,104 @@ export default function RestaurantDashboard() {
 
       case 'tables':
         return (
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-white">Tables & Reservations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/60 text-center py-8">Manage table reservations and seating arrangements</p>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white">Tables</CardTitle>
+                  <Dialog open={showTableDialog} onOpenChange={setShowTableDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gradient-to-r from-amber-500 to-orange-500">
+                        <Plus className="h-4 w-4 mr-2" /> Add Table
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-gray-900 text-white border-white/20">
+                      <DialogHeader>
+                        <DialogTitle>Add New Table</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div><Label>Table Number</Label><Input value={newTable.number} onChange={(e) => setNewTable({ ...newTable, number: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div><Label>Capacity</Label><Input type="number" value={newTable.capacity} onChange={(e) => setNewTable({ ...newTable, capacity: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div><Label>Location</Label><Input value={newTable.location} onChange={(e) => setNewTable({ ...newTable, location: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <Button onClick={addTable} className="w-full bg-amber-500">Add Table</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {tables.map((table: any) => (
+                    <Card key={table.id} className="bg-white/5 border-white/10">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-semibold text-white">Table {table.number}</p>
+                          <Badge className={table.status === 'available' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
+                            {table.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-white/60">Capacity: {table.capacity}</p>
+                        <p className="text-sm text-white/60">{table.location}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-xl">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white">Reservations</CardTitle>
+                  <Dialog open={showReservationDialog} onOpenChange={setShowReservationDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gradient-to-r from-amber-500 to-orange-500">
+                        <Plus className="h-4 w-4 mr-2" /> Add Reservation
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-gray-900 text-white border-white/20 max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>New Reservation</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div><Label>Customer Name</Label><Input value={newReservation.customer_name} onChange={(e) => setNewReservation({ ...newReservation, customer_name: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div><Label>Email</Label><Input value={newReservation.customer_email} onChange={(e) => setNewReservation({ ...newReservation, customer_email: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div><Label>Phone</Label><Input value={newReservation.customer_phone} onChange={(e) => setNewReservation({ ...newReservation, customer_phone: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div><Label>Date</Label><Input type="date" value={newReservation.date} onChange={(e) => setNewReservation({ ...newReservation, date: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                          <div><Label>Time</Label><Input type="time" value={newReservation.time} onChange={(e) => setNewReservation({ ...newReservation, time: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        </div>
+                        <div><Label>Number of Guests</Label><Input type="number" value={newReservation.guests} onChange={(e) => setNewReservation({ ...newReservation, guests: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <div><Label>Notes</Label><Textarea value={newReservation.notes} onChange={(e) => setNewReservation({ ...newReservation, notes: e.target.value })} className="bg-white/10 border-white/20 text-white" /></div>
+                        <Button onClick={addReservation} className="w-full bg-amber-500">Create Reservation</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {reservations.length === 0 ? (
+                  <p className="text-white/60 text-center py-8">No reservations yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {reservations.map((res: any) => (
+                      <div key={res.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-white">{res.customer_name}</p>
+                            <p className="text-sm text-white/60">{res.customer_email} • {res.customer_phone}</p>
+                            <p className="text-sm text-white/70 mt-1">{res.date} at {res.time} • {res.guests} guests</p>
+                            {res.notes && <p className="text-xs text-white/50 mt-1">{res.notes}</p>}
+                          </div>
+                          <Badge className="bg-blue-500/20 text-blue-400">{res.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 'billing':
