@@ -31,7 +31,7 @@ export async function subscribeToPushNotifications(userId: string) {
     const granted = await requestNotificationPermission();
     if (!granted) {
       console.log('Notification permission denied');
-      return;
+      return null;
     }
 
     if ('serviceWorker' in navigator) {
@@ -45,9 +45,11 @@ export async function subscribeToPushNotifications(userId: string) {
       });
 
       console.log('Push subscription successful');
+      return subscription;
     }
   } catch (error) {
     console.error('Error subscribing to push notifications:', error);
+    return null;
   }
 }
 
