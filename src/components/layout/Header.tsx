@@ -40,23 +40,13 @@ export const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            {isAdmin ? (
-              <button 
-                onClick={() => navigate('/admin')}
-                className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
-                title="Admin Dashboard"
-              >
-                <span className="text-primary-foreground font-bold text-sm">Q</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => navigate('/admin-signup')}
-                className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
-                title="Admin Signup"
-              >
-                <span className="text-primary-foreground font-bold text-sm">Q</span>
-              </button>
-            )}
+            <button 
+              onClick={() => navigate('/')}
+              className="h-8 w-8 rounded-xl bg-gradient-primary flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer"
+              title="Home"
+            >
+              <span className="text-primary-foreground font-bold text-sm">Q</span>
+            </button>
             <Link to="/" className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
               QUICKLINK
             </Link>
@@ -100,6 +90,12 @@ export const Header = () => {
                     <User className="h-4 w-4 mr-2" />
                     Dashboard
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <User className="h-4 w-4 mr-2" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="h-4 w-4 mr-2" />
@@ -181,6 +177,19 @@ export const Header = () => {
                         <User className="h-4 w-4 mr-2" />
                         Dashboard
                       </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            navigate('/admin');
+                            setIsMobileMenuOpen(false);
+                          }}
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          Admin Panel
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         className="w-full justify-start text-destructive hover:text-destructive"

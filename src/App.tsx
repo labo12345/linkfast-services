@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { GlobalAIAssistant } from "@/components/GlobalAIAssistant";
+import { Footer } from "@/components/layout/Footer";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminSignup from "./pages/AdminSignup";
@@ -36,29 +37,34 @@ const App = () => (
         <Sonner />
         <GlobalAIAssistant />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin-signup" element={<AdminSignup />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/food" element={<Food />} />
-            <Route path="/properties" element={<Properties />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/taxi" element={<Taxi />} />
-            <Route path="/errands" element={<Errands />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/driver-dashboard" element={<DriverDashboard />} />
-            <Route path="/seller-dashboard" element={<SellerDashboard />} />
-            <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
-            <Route path="/property-dashboard" element={<PropertySellerDashboard />} />
-            <Route path="/onboarding/driver" element={<DriverOnboarding />} />
-            <Route path="/onboarding/seller" element={<SellerOnboarding />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="flex flex-col min-h-screen">
+            <div className="flex-grow">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/admin-signup" element={<AdminSignup />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/food" element={<Food />} />
+                <Route path="/properties" element={<Properties />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/taxi" element={<Taxi />} />
+                <Route path="/errands" element={<Errands />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/driver-dashboard" element={<DriverDashboard />} />
+                <Route path="/seller-dashboard" element={<SellerDashboard />} />
+                <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
+                <Route path="/property-dashboard" element={<PropertySellerDashboard />} />
+                <Route path="/onboarding/driver" element={<DriverOnboarding />} />
+                <Route path="/onboarding/seller" element={<SellerOnboarding />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <Footer />
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
