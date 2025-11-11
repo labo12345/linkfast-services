@@ -19,11 +19,13 @@ import {
   BarChart3,
   Shield,
   AlertCircle,
-  Utensils
+  Utensils,
+  Eye
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DriverVerificationDialog } from '@/components/admin/DriverVerificationDialog';
 
 export default function Admin() {
   const { user } = useAuth();
@@ -31,6 +33,8 @@ export default function Admin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDriver, setSelectedDriver] = useState<any>(null);
+  const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   
   // State for various data
   const [users, setUsers] = useState([]);
@@ -133,38 +137,22 @@ export default function Admin() {
       setRestaurants(restaurantsData || []);
 
       // Calculate stats
+      const pendingDrivers = driversData?.filter(d => !d.is_verified)?.length || 0;
       setStats({
         totalUsers: usersData?.length || 0,
         totalDrivers: driversData?.length || 0,
         totalProducts: productsData?.length || 0,
         totalProperties: propertiesData?.length || 0,
-        pendingApprovals: (driversData?.filter(d => !d.is_verified)?.length || 0) + 
-                         (productsData?.filter(p => !p.is_active)?.length || 0)
+        pendingApprovals: pendingDrivers + (productsData?.filter(p => !p.is_active)?.length || 0)
       });
     } catch (error) {
       console.error('Error fetching admin data:', error);
     }
   };
 
-  const verifyDriver = async (driverId: string, isVerified: boolean) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('drivers')
-        .update({ is_verified: isVerified })
-        .eq('id', driverId);
-
-      if (!error) {
-        toast({
-          title: isVerified ? "Driver Verified" : "Driver Unverified",
-          description: `Driver has been ${isVerified ? 'verified' : 'unverified'} successfully`
-        });
-        fetchAllData();
-      }
-    } catch (error) {
-      console.error('Error verifying driver:', error);
-    }
-    setLoading(false);
+  const handleViewDriver = (driver: any) => {
+    setSelectedDriver(driver);
+    setDriverDialogOpen(true);
   };
 
   const toggleProductStatus = async (productId: string, isActive: boolean) => {
@@ -214,6 +202,13 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      
+      <DriverVerificationDialog
+        driver={selectedDriver}
+        open={driverDialogOpen}
+        onOpenChange={setDriverDialogOpen}
+        onSuccess={fetchAllData}
+      />
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -363,60 +358,104 @@ export default function Admin() {
 
           {/* Drivers Tab */}
           <TabsContent value="drivers">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="h-5 w-5" />
-                  Verify Drivers ({drivers.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {drivers.map((driver: any) => (
-                    <div key={driver.id} className="flex items-center justify-between border rounded-lg p-4">
-                      <div className="flex-1">
-                        <p className="font-semibold">{driver.users?.full_name || 'No name'}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {driver.vehicle_type} - {driver.vehicle_number}
-                        </p>
-                        <div className="flex gap-2 mt-2">
-                          <Badge variant={driver.is_verified ? 'default' : 'secondary'}>
-                            {driver.is_verified ? 'Verified' : 'Pending'}
-                          </Badge>
-                          <Badge variant={driver.is_online ? 'default' : 'outline'}>
-                            {driver.is_online ? 'Online' : 'Offline'}
-                          </Badge>
-                        </div>
+            <div className="space-y-6">
+              {/* Pending Drivers */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-orange-600" />
+                    Pending Driver Applications ({drivers.filter((d: any) => !d.is_verified).length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {drivers.filter((d: any) => !d.is_verified).length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Car className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No pending driver applications</p>
                       </div>
-                      <div className="flex gap-2">
-                        {!driver.is_verified && (
+                    ) : (
+                      drivers.filter((d: any) => !d.is_verified).map((driver: any) => (
+                        <div key={driver.id} className="flex items-center justify-between border rounded-lg p-4 bg-orange-50/50">
+                          <div className="flex-1">
+                            <p className="font-semibold">{driver.users?.full_name || 'No name'}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {driver.vehicle_type} • {driver.vehicle_number}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Applied: {new Date(driver.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
                           <Button
                             size="sm"
-                            onClick={() => verifyDriver(driver.id, true)}
-                            disabled={loading}
-                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleViewDriver(driver)}
+                            variant="outline"
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Verify
+                            <Eye className="h-4 w-4 mr-2" />
+                            Review Application
                           </Button>
-                        )}
-                        {driver.is_verified && (
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* All Drivers */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Car className="h-5 w-5" />
+                    All Drivers ({drivers.length})
+                  </CardTitle>
+                  <Input
+                    placeholder="Search drivers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm mt-2"
+                  />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {drivers
+                      .filter((d: any) => 
+                        d.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        d.vehicle_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        d.vehicle_type?.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((driver: any) => (
+                        <div key={driver.id} className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold">{driver.users?.full_name || 'No name'}</p>
+                              <Badge variant={driver.is_verified ? 'default' : 'secondary'} className="text-xs">
+                                {driver.is_verified ? 'Verified' : 'Pending'}
+                              </Badge>
+                              <Badge variant={driver.is_online ? 'default' : 'outline'} className="text-xs">
+                                {driver.is_online ? 'Online' : 'Offline'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground capitalize">
+                              {driver.vehicle_type} • {driver.vehicle_number}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              License: {driver.license_number}
+                            </p>
+                          </div>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => verifyDriver(driver.id, false)}
-                            disabled={loading}
+                            onClick={() => handleViewDriver(driver)}
                           >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Unverify
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
                           </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Products Tab */}
