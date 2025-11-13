@@ -71,7 +71,23 @@ export default function Admin() {
     
     // If admin, load all data
     fetchAllData();
-    subscribeToAdminUpdates();
+    const cleanup = subscribeToAdminUpdates();
+
+    // Listen for new driver applications
+    const handleNewDriverApplication = (event: any) => {
+      toast({
+        title: "🚗 New Driver Application",
+        description: "A new driver has submitted their application for review",
+      });
+      fetchAllData();
+    };
+
+    window.addEventListener("new-driver-application", handleNewDriverApplication);
+
+    return () => {
+      cleanup?.();
+      window.removeEventListener("new-driver-application", handleNewDriverApplication);
+    };
   }, [user, isAdmin, adminLoading, navigate]);
 
   const subscribeToAdminUpdates = () => {

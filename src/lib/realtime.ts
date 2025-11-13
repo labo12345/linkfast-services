@@ -5,6 +5,7 @@ let ordersChannel: any = null;
 let chatChannel: any = null;
 let driversChannel: any = null;
 let ridesChannel: any = null;
+let driverApplicationsChannel: any = null;
 
 export function subscribeRealtime() {
   console.log("🔄 Setting up real-time subscriptions...");
@@ -96,6 +97,19 @@ export function subscribeRealtime() {
     )
     .subscribe();
 
+  // Driver applications (for admin notifications)
+  driverApplicationsChannel = supabase
+    .channel("driver-applications")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "drivers" },
+      (payload) => {
+        console.log("🚗 New driver application:", payload.new);
+        window.dispatchEvent(new CustomEvent("new-driver-application", { detail: payload.new }));
+      }
+    )
+    .subscribe();
+
   console.log("✅ Real-time subscriptions active");
 }
 
@@ -104,6 +118,7 @@ export function unsubscribeRealtime() {
   if (chatChannel) supabase.removeChannel(chatChannel);
   if (driversChannel) supabase.removeChannel(driversChannel);
   if (ridesChannel) supabase.removeChannel(ridesChannel);
+  if (driverApplicationsChannel) supabase.removeChannel(driverApplicationsChannel);
   console.log("🔌 Real-time subscriptions disconnected");
 }
 
