@@ -651,6 +651,69 @@ export type Database = {
           },
         ]
       }
+      reservations: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          date: string
+          guests: number
+          id: string
+          notes: string | null
+          restaurant_id: string
+          status: string | null
+          table_id: string
+          time: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          date: string
+          guests: number
+          id?: string
+          notes?: string | null
+          restaurant_id: string
+          status?: string | null
+          table_id: string
+          time: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          date?: string
+          guests?: number
+          id?: string
+          notes?: string | null
+          restaurant_id?: string
+          status?: string | null
+          table_id?: string
+          time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           cover_image: string | null
@@ -824,6 +887,86 @@ export type Database = {
           },
         ]
       }
+      staff: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          restaurant_id: string
+          role: string
+          shift: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          restaurant_id: string
+          role: string
+          shift?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          restaurant_id?: string
+          role?: string
+          shift?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tables: {
+        Row: {
+          capacity: number
+          created_at: string | null
+          id: string
+          location: string | null
+          number: string
+          restaurant_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          capacity: number
+          created_at?: string | null
+          id?: string
+          location?: string | null
+          number: string
+          restaurant_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number
+          created_at?: string | null
+          id?: string
+          location?: string | null
+          number?: string
+          restaurant_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tables_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -982,12 +1125,176 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_reservation: {
+        Args: {
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_guests_count: number
+          p_notes?: string
+          p_reservation_date: string
+          p_reservation_status?: string
+          p_reservation_time: string
+          p_restaurant_id: string
+          p_table_id: string
+        }
+        Returns: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          guests: number
+          id: string
+          notes: string
+          reservation_date: string
+          reservation_time: string
+          restaurant_id: string
+          status: string
+          table_id: string
+          updated_at: string
+        }[]
+      }
+      create_table: {
+        Args: {
+          p_restaurant_id: string
+          p_table_capacity: number
+          p_table_location: string
+          p_table_number: string
+          p_table_status?: string
+        }
+        Returns: {
+          capacity: number
+          created_at: string
+          id: string
+          location: string
+          number: string
+          restaurant_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      delete_reservation: {
+        Args: { p_reservation_id: string }
+        Returns: boolean
+      }
+      delete_table: { Args: { p_table_id: string }; Returns: boolean }
+      get_restaurant_reservations: {
+        Args: { p_restaurant_id: string }
+        Returns: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          guests: number
+          id: string
+          notes: string
+          reservation_date: string
+          reservation_time: string
+          restaurant_id: string
+          status: string
+          table_id: string
+          tables: Json
+          updated_at: string
+        }[]
+      }
+      get_restaurant_tables: {
+        Args: { p_restaurant_id: string }
+        Returns: {
+          capacity: number
+          created_at: string
+          id: string
+          location: string
+          number: string
+          restaurant_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      update_reservation: {
+        Args: {
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_guests_count: number
+          p_notes?: string
+          p_reservation_date: string
+          p_reservation_id: string
+          p_reservation_status?: string
+          p_reservation_time: string
+          p_table_id: string
+        }
+        Returns: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          guests: number
+          id: string
+          notes: string
+          reservation_date: string
+          reservation_time: string
+          restaurant_id: string
+          status: string
+          table_id: string
+          updated_at: string
+        }[]
+      }
+      update_reservation_status: {
+        Args: { p_reservation_id: string; p_reservation_status: string }
+        Returns: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          guests: number
+          id: string
+          notes: string
+          reservation_date: string
+          reservation_time: string
+          restaurant_id: string
+          status: string
+          table_id: string
+          updated_at: string
+        }[]
+      }
+      update_table: {
+        Args: {
+          p_table_capacity: number
+          p_table_id: string
+          p_table_location: string
+          p_table_number: string
+          p_table_status: string
+        }
+        Returns: {
+          capacity: number
+          created_at: string
+          id: string
+          location: string
+          number: string
+          restaurant_id: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      update_table_status: {
+        Args: { p_table_id: string; p_table_status: string }
+        Returns: {
+          capacity: number
+          created_at: string
+          id: string
+          location: string
+          number: string
+          restaurant_id: string
+          status: string
+          updated_at: string
+        }[]
       }
     }
     Enums: {

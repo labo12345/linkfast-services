@@ -581,64 +581,78 @@ export default function RestaurantDashboard() {
   const fetchStaff = async () => {
     if (!restaurantId) return;
     try {
-      // Store staff in a JSON column in restaurant settings or create custom table
-      const { data } = await supabase
-        .from('restaurants')
+      const { data, error } = await supabase
+        .from('staff')
         .select('*')
-        .eq('id', restaurantId)
-        .maybeSingle();
+        .eq('restaurant_id', restaurantId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
       
-      // For now, using localStorage as temporary storage
-      const storedStaff = localStorage.getItem(`restaurant_staff_${restaurantId}`);
-      if (storedStaff) {
-        setStaff(JSON.parse(storedStaff));
+      if (data) {
+        setStaff(data);
       }
     } catch (error) {
       console.error('Error fetching staff:', error);
     }
   };
 
-  const saveStaffToStorage = (staffList: any[]) => {
-    if (restaurantId) {
-      localStorage.setItem(`restaurant_staff_${restaurantId}`, JSON.stringify(staffList));
-      setStaff(staffList);
-    }
-  };
-
   const addOrUpdateStaff = async () => {
+    if (!restaurantId) return;
+    setLoading(true);
     try {
       const staffData = {
-        id: editingStaff?.id || Date.now().toString(),
-        ...newStaff,
-        created_at: editingStaff?.created_at || new Date().toISOString()
+        name: newStaff.name,
+        role: newStaff.role,
+        phone: newStaff.phone,
+        email: newStaff.email,
+        shift: newStaff.shift,
+        restaurant_id: restaurantId
       };
       
-      let updatedStaff;
       if (editingStaff) {
-        updatedStaff = staff.map(s => s.id === editingStaff.id ? staffData : s);
-        toast({ title: "Staff member updated successfully" });
-        setEditingStaff(null);
+        const { error } = await supabase
+          .from('staff')
+          .update(staffData)
+          .eq('id', editingStaff.id);
+        
+        if (!error) {
+          toast({ title: "Staff member updated successfully" });
+          setEditingStaff(null);
+        }
       } else {
-        updatedStaff = [...staff, staffData];
-        toast({ title: "Staff member added successfully" });
+        const { error } = await supabase
+          .from('staff')
+          .insert(staffData);
+        
+        if (!error) {
+          toast({ title: "Staff member added successfully" });
+        }
       }
       
-      saveStaffToStorage(updatedStaff);
       setNewStaff({ name: '', role: '', phone: '', email: '', shift: '' });
       setShowStaffDialog(false);
+      fetchStaff();
     } catch (error) {
       console.error('Error saving staff:', error);
       toast({ title: "Error", description: "Failed to save staff member", variant: "destructive" });
     }
+    setLoading(false);
   };
 
   const deleteStaff = async (id: string) => {
     try {
-      const updatedStaff = staff.filter(s => s.id !== id);
-      saveStaffToStorage(updatedStaff);
-      toast({ title: "Staff member removed successfully" });
+      const { error } = await supabase
+        .from('staff')
+        .update({ is_active: false })
+        .eq('id', id);
+      
+      if (!error) {
+        toast({ title: "Staff member removed successfully" });
+        fetchStaff();
+      }
     } catch (error) {
       console.error('Error deleting staff:', error);
+      toast({ title: "Error", description: "Failed to delete staff member", variant: "destructive" });
     }
   };
 
@@ -650,12 +664,24 @@ export default function RestaurantDashboard() {
 
     const reservationsChannel = supabase
       .channel('restaurant-reservations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => fetchReservations())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${restaurantId}` }, () => {
+        fetchReservations();
+        toast({
+          title: "Reservation Updated",
+          description: "A reservation has been updated",
+        });
+      })
+      .subscribe();
+
+    const staffChannel = supabase
+      .channel('restaurant-staff')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `restaurant_id=eq.${restaurantId}` }, () => fetchStaff())
       .subscribe();
 
     return () => {
       supabase.removeChannel(tablesChannel);
       supabase.removeChannel(reservationsChannel);
+      supabase.removeChannel(staffChannel);
     };
   };
 
@@ -1335,8 +1361,14 @@ export default function RestaurantDashboard() {
                             <p className="text-sm text-white/70 mt-1">{res.date} at {res.time} • {res.guests} guests</p>
                             {res.notes && <p className="text-xs text-white/50 mt-1">Note: {res.notes}</p>}
                           </div>
-                          <div className="flex flex-col gap-2">
-                            <Badge className={res.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400' : res.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}>
+                           <div className="flex flex-col gap-2">
+                            <Badge className={
+                              res.status === 'confirmed' ? 'bg-emerald-500/20 text-emerald-400' : 
+                              res.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 
+                              res.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                              res.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }>
                               {res.status}
                             </Badge>
                             <div className="flex gap-1">
@@ -1347,11 +1379,23 @@ export default function RestaurantDashboard() {
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
-                            {res.status === 'pending' && (
-                              <Button size="sm" onClick={() => updateReservationStatus(res.id, 'confirmed')} className="bg-emerald-500 hover:bg-emerald-600 text-white">
-                                Confirm
-                              </Button>
-                            )}
+                            <div className="flex flex-col gap-1">
+                              {res.status === 'pending' && (
+                                <Button size="sm" onClick={() => updateReservationStatus(res.id, 'confirmed')} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Confirm
+                                </Button>
+                              )}
+                              {res.status === 'confirmed' && (
+                                <Button size="sm" onClick={() => updateReservationStatus(res.id, 'completed')} className="bg-blue-500 hover:bg-blue-600 text-white text-xs">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Complete
+                                </Button>
+                              )}
+                              {(res.status === 'pending' || res.status === 'confirmed') && (
+                                <Button size="sm" onClick={() => updateReservationStatus(res.id, 'cancelled')} variant="outline" className="bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 text-xs">
+                                  <XCircle className="h-3 w-3 mr-1" /> Cancel
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
