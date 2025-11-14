@@ -10,6 +10,9 @@ import { AdminStats } from '@/components/admin/AdminStats';
 import { OrdersManagement } from '@/components/admin/OrdersManagement';
 import { TransactionsManagement } from '@/components/admin/TransactionsManagement';
 import { DriverVerificationDialog } from '@/components/admin/DriverVerificationDialog';
+import Analytics from '@/pages/admin/Analytics';
+import Activity from '@/pages/admin/Activity';
+import Settings from '@/pages/admin/Settings';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -498,6 +501,9 @@ export default function Admin() {
               <Route path="products" element={<ProductsTab />} />
               <Route path="properties" element={<PropertiesTab />} />
               <Route path="restaurants" element={<RestaurantsTab />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="activity" element={<Activity />} />
+              <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Routes>
           </main>
