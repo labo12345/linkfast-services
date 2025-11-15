@@ -25,6 +25,7 @@ import RestaurantDashboard from "./pages/RestaurantDashboard";
 import PropertySellerDashboard from "./pages/PropertySellerDashboard";
 import DriverOnboarding from "./components/onboarding/DriverOnboarding";
 import SellerOnboarding from "./components/onboarding/SellerOnboarding";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="/property-dashboard" element={<PropertySellerDashboard />} />
                 <Route path="/onboarding/driver" element={<DriverOnboarding />} />
                 <Route path="/onboarding/seller" element={<SellerOnboarding />} />
+                <Route path="/profile" element={<Profile />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
