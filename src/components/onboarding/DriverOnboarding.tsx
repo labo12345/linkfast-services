@@ -27,24 +27,17 @@ export default function DriverOnboarding() {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('drivers')
-        .insert([
-          {
-            user_id: user.id,
-            ...formData,
-            is_verified: false,
-            is_online: false
-          }
-        ]);
+      const { error } = await supabase.from('drivers').insert({
+        user_id: user.id,
+        vehicle_type: formData.vehicleType,
+        vehicle_number: formData.vehicleNumber,
+        license_number: formData.licenseNumber,
+        is_verified: false,
+      });
 
       if (error) throw error;
 
-      toast({
-        title: "Application submitted!",
-        description: "Your driver application is under review. You'll be notified once verified.",
-      });
-
+      toast.success('Application submitted! An admin will review and verify your registration.');
       navigate('/driver-dashboard');
     } catch (error) {
       console.error('Driver registration error:', error);

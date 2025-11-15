@@ -54,12 +54,16 @@ export default function DriverDashboard() {
   }, [user]);
 
   const fetchDriverProfile = async () => {
+    if (!user) return;
+
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('drivers')
         .select('*')
-        .eq('user_id', user?.id)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
       
       if (data) {
         setIsOnline(data.is_online);
@@ -175,11 +179,22 @@ export default function DriverDashboard() {
           className="mb-8"
         >
           <div className="flex justify-between items-center">
-            <div>
+           <div className="flex-1">
               <h1 className="text-3xl font-bold mb-2">Driver Dashboard</h1>
               <p className="text-muted-foreground">
                 Manage your rides and earnings
               </p>
+              {driverProfile && !driverProfile.is_verified && (
+                <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-500 rounded-lg">
+                  <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                    <Clock className="h-5 w-5" />
+                    <p className="font-semibold">Verification Pending</p>
+                  </div>
+                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
+                    Your driver application is under review. You'll be able to go online once an admin verifies your account.
+                  </p>
+                </div>
+              )}
             </div>
             
             <Button

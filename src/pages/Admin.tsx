@@ -10,6 +10,7 @@ import { AdminStats } from '@/components/admin/AdminStats';
 import { OrdersManagement } from '@/components/admin/OrdersManagement';
 import { TransactionsManagement } from '@/components/admin/TransactionsManagement';
 import { DriverVerificationDialog } from '@/components/admin/DriverVerificationDialog';
+import { DriverVerification } from '@/components/admin/DriverVerification';
 import Analytics from '@/pages/admin/Analytics';
 import Activity from '@/pages/admin/Activity';
 import Settings from '@/pages/admin/Settings';
@@ -275,93 +276,7 @@ export default function Admin() {
     </Card>
   );
 
-  const DriversTab = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-orange-600" />
-            Pending Driver Applications ({drivers.filter((d: any) => !d.is_verified).length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {drivers.filter((d: any) => !d.is_verified).length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Car className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No pending driver applications</p>
-              </div>
-            ) : (
-              drivers.filter((d: any) => !d.is_verified).map((driver: any) => (
-                <div key={driver.id} className="flex items-center justify-between border rounded-lg p-4 bg-orange-50/50">
-                  <div className="flex-1">
-                    <p className="font-semibold">{driver.users?.full_name || 'No name'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {driver.vehicle_type} • {driver.vehicle_number}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Applied: {new Date(driver.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <Button size="sm" onClick={() => handleViewDriver(driver)} variant="outline">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Review Application
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Car className="h-5 w-5" />
-            All Drivers ({drivers.length})
-          </CardTitle>
-          <Input
-            placeholder="Search drivers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm mt-2"
-          />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {drivers
-              .filter((d: any) => 
-                d.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                d.vehicle_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                d.vehicle_type?.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((driver: any) => (
-                <div key={driver.id} className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">{driver.users?.full_name || 'No name'}</p>
-                      <Badge variant={driver.is_verified ? 'default' : 'secondary'} className="text-xs">
-                        {driver.is_verified ? 'Verified' : 'Pending'}
-                      </Badge>
-                      <Badge variant={driver.is_online ? 'default' : 'outline'} className="text-xs">
-                        {driver.is_online ? 'Online' : 'Offline'}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {driver.vehicle_type} • {driver.vehicle_number}
-                    </p>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => handleViewDriver(driver)}>
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Details
-                  </Button>
-                </div>
-              ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  const DriversTab = () => <DriverVerification />;
 
   const ProductsTab = () => (
     <Card>
