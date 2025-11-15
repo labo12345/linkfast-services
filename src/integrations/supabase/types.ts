@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      drivers: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_online: boolean | null
+          is_verified: boolean | null
+          license_number: string
+          updated_at: string | null
+          user_id: string
+          vehicle_number: string
+          vehicle_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          is_verified?: boolean | null
+          license_number: string
+          updated_at?: string | null
+          user_id: string
+          vehicle_number: string
+          vehicle_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          is_verified?: boolean | null
+          license_number?: string
+          updated_at?: string | null
+          user_id?: string
+          vehicle_number?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
