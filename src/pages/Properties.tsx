@@ -77,7 +77,7 @@ export default function Properties() {
       const { data, error } = await supabase
         .from('properties')
         .select('*')
-        .eq('is_active', true)
+        .eq('is_available', true)
         .limit(20);
 
       if (error) throw error;
