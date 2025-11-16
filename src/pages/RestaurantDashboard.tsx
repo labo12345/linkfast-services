@@ -124,7 +124,7 @@ export default function RestaurantDashboard() {
         const { data, error } = await supabase
           .from('restaurants')
           .select('*')
-          .eq('seller_id', sellerData.id)
+          .eq('user_id', user?.id)
           .single();
         
         if (data) {
@@ -158,7 +158,7 @@ export default function RestaurantDashboard() {
         const { data: restaurantData } = await supabase
           .from('restaurants')
           .select('id')
-          .eq('seller_id', sellerData.id)
+          .eq('user_id', user?.id)
           .single();
 
         if (restaurantData) {
@@ -189,7 +189,7 @@ export default function RestaurantDashboard() {
         const { data: restaurantData } = await supabase
           .from('restaurants')
           .select('id')
-          .eq('seller_id', sellerData.id)
+          .eq('user_id', user?.id)
           .single();
 
         if (restaurantData) {
@@ -285,7 +285,7 @@ export default function RestaurantDashboard() {
         await supabase
           .from('restaurants')
           .update({ logo_url: publicUrl })
-          .eq('seller_id', sellerData.id);
+          .eq('user_id', user?.id);
       }
       
       toast({ title: "Logo updated", description: "Restaurant logo updated successfully" });
@@ -308,7 +308,7 @@ export default function RestaurantDashboard() {
         const { error } = await supabase
           .from('restaurants')
           .upsert({
-            seller_id: sellerData.id,
+            user_id: user?.id,
             name: restaurant.name,
             description: restaurant.description,
             cuisine_type: restaurant.cuisine_type,
@@ -518,12 +518,27 @@ export default function RestaurantDashboard() {
     try {
       const { data } = await supabase
         .from('orders')
-        .select('customer_id, users(full_name, phone, avatar_url)')
+        .select(`
+          customer_id,
+          profiles:customer_id (
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('restaurant_id', restaurantId);
       
       if (data) {
         const uniqueCustomers = Array.from(
-          new Map(data.map(item => [item.customer_id, { id: item.customer_id, ...item.users }])).values()
+          new Map(
+            data.map((item: any) => [
+              item.customer_id,
+              {
+                id: item.customer_id,
+                full_name: item.profiles?.full_name || 'Unknown',
+                avatar_url: item.profiles?.avatar_url || null,
+              },
+            ])
+          ).values()
         );
         setCustomers(uniqueCustomers);
       }

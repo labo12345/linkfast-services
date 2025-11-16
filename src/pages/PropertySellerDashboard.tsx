@@ -61,7 +61,7 @@ export default function PropertySellerDashboard() {
       const { data, error } = await supabase
         .from('properties')
         .select('*')
-        .eq('seller_id', user?.id);
+        .eq('user_id', user?.id);
       
       if (data) {
         setProperties(data);
@@ -87,13 +87,19 @@ export default function PropertySellerDashboard() {
       const { error } = await supabase
         .from('properties')
         .insert({
-          ...newProperty,
+          title: newProperty.title,
+          description: newProperty.description,
+          address: newProperty.title, // Using title as address temporarily
           price: parseFloat(newProperty.price),
+          property_type: newProperty.property_type,
           bedrooms: parseInt(newProperty.bedrooms) || null,
           bathrooms: parseInt(newProperty.bathrooms) || null,
+          size: newProperty.size || null,
+          contact_phone: newProperty.contact_phone || null,
+          contact_email: newProperty.contact_email || null,
           latitude: parseFloat(newProperty.latitude) || null,
           longitude: parseFloat(newProperty.longitude) || null,
-          seller_id: user?.id
+          user_id: user?.id
         });
 
       if (!error) {
