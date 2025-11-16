@@ -160,17 +160,30 @@ export default function Errands() {
     setLoading(true);
     
     try {
+      // First create the errand
+      const { data: errandData, error: errandError } = await supabase
+        .from('errands')
+        .insert({
+          customer_id: user.id,
+          title: selectedService.name,
+          description: errandDetails,
+          pickup_location: pickupAddress,
+          delivery_location: deliveryAddress || null,
+          status: 'pending',
+          budget: calculatePrice(),
+          payment_method: paymentMethod
+        })
+        .select()
+        .single();
+      
+      if (errandError) throw errandError;
+      
+      // Then create errand order
       const { error } = await supabase
         .from('errand_orders')
         .insert({
-          customer_id: user.id,
-          service_type: selectedService.id,
-          pickup_address: pickupAddress,
-          delivery_address: deliveryAddress || null,
-          errand_details: errandDetails,
-          urgency: urgency,
-          total_amount: calculatePrice(),
-          payment_method: paymentMethod
+          errand_id: errandData.id,
+          status: 'pending'
         });
 
       if (!error) {

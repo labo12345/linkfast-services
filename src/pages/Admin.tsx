@@ -115,20 +115,20 @@ export default function Admin() {
   const fetchAllData = async () => {
     try {
       const { data: usersData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       setUsers(usersData || []);
 
       const { data: driversData } = await supabase
         .from('drivers')
-        .select('*, users!inner(full_name, phone)')
+        .select('*')
         .order('created_at', { ascending: false });
       setDrivers(driversData || []);
 
       const { data: productsData } = await supabase
         .from('products')
-        .select('*, sellers!inner(shop_name)')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
       setProducts(productsData || []);
@@ -142,7 +142,7 @@ export default function Admin() {
 
       const { data: restaurantsData } = await supabase
         .from('restaurants')
-        .select('*, sellers!inner(shop_name)')
+        .select('*')
         .order('created_at', { ascending: false });
       setRestaurants(restaurantsData || []);
 
@@ -200,18 +200,18 @@ export default function Admin() {
     setLoading(false);
   };
 
-  const togglePropertyStatus = async (propertyId: string, isActive: boolean) => {
+  const togglePropertyStatus = async (propertyId: string, isAvailable: boolean) => {
     setLoading(true);
     try {
       const { error } = await supabase
         .from('properties')
-        .update({ is_active: !isActive })
+        .update({ is_available: !isAvailable })
         .eq('id', propertyId);
 
       if (!error) {
         toast({
           title: "Property Updated",
-          description: `Property has been ${!isActive ? 'activated' : 'deactivated'}`
+          description: `Property has been ${!isAvailable ? 'activated' : 'deactivated'}`
         });
         fetchAllData();
       }
