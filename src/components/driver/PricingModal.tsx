@@ -49,8 +49,7 @@ export default function PricingModal({ isOpen, onClose, driverId }: PricingModal
     try {
       const { data, error } = await supabase
         .from('driver_pricing')
-        .select('*')
-        .eq('driver_id', driverId);
+        .select('*');
 
       if (error) throw error;
 
@@ -111,10 +110,10 @@ export default function PricingModal({ isOpen, onClose, driverId }: PricingModal
         await supabase
           .from('driver_pricing')
           .upsert({
-            driver_id: driverId,
             ride_type: pricingData.ride_type,
             base_fare: pricingData.base_fare,
             per_km_rate: pricingData.per_km_rate,
+            per_minute_rate: 0,
             minimum_fare: pricingData.minimum_fare,
             waiting_charge: pricingData.waiting_charge
           });

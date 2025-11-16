@@ -118,14 +118,28 @@ export default function Taxi() {
           vehicle_number,
           current_latitude,
           current_longitude,
-          users!drivers_user_id_fkey(full_name, phone)
+          user_id,
+          profiles!drivers_user_id_fkey(full_name)
         `)
         .eq('is_online', true)
         .eq('is_verified', true)
         .limit(10);
 
       if (error) throw error;
-      setAvailableDrivers(data || []);
+      
+      const formattedData = data?.map((d: any) => ({
+        id: d.id,
+        vehicle_type: d.vehicle_type,
+        vehicle_number: d.vehicle_number,
+        current_latitude: d.current_latitude || 0,
+        current_longitude: d.current_longitude || 0,
+        users: {
+          full_name: d.profiles?.[0]?.full_name || 'Unknown',
+          phone: ''
+        }
+      })) || [];
+      
+      setAvailableDrivers(formattedData);
     } catch (error) {
       console.error('Error fetching drivers:', error);
     }
@@ -171,14 +185,15 @@ export default function Taxi() {
         .insert([
           {
             customer_id: user.id,
+            pickup_location: pickupAddress,
             pickup_address: pickupAddress,
-            dropoff_address: dropoffAddress,
-            pickup_latitude: -0.3031, // Default Kerugoya coordinates
-            pickup_longitude: 37.2808,
-            dropoff_latitude: -0.3131, // Approximate dropoff
-            dropoff_longitude: 37.2908,
+            dropoff_location: dropoffAddress,
+            pickup_lat: -0.3031, // Default Kerugoya coordinates
+            pickup_lng: 37.2808,
+            dropoff_lat: -0.3131, // Approximate dropoff
+            dropoff_lng: 37.2908,
             fare: estimatedFare,
-            special_instructions: specialInstructions,
+            ride_type: rideType,
             payment_method: paymentMethod as any,
             status: 'requested'
           }

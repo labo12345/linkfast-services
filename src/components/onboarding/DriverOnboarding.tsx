@@ -29,15 +29,18 @@ export default function DriverOnboarding() {
     try {
       const { error } = await supabase.from('drivers').insert({
         user_id: user.id,
-        vehicle_type: formData.vehicleType,
-        vehicle_number: formData.vehicleNumber,
-        license_number: formData.licenseNumber,
+        vehicle_type: formData.vehicle_type,
+        vehicle_number: formData.vehicle_number,
+        license_number: formData.license_number,
         is_verified: false,
       });
 
       if (error) throw error;
 
-      toast.success('Application submitted! An admin will review and verify your registration.');
+      toast({
+        title: "Success",
+        description: "Application submitted! An admin will review and verify your registration.",
+      });
       navigate('/driver-dashboard');
     } catch (error) {
       console.error('Driver registration error:', error);
